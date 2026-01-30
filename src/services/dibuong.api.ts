@@ -1,5 +1,5 @@
 import { request } from "./http";
-import type { ThongTinVaoVienResponse, BuongPhongResponse, LanKhamItem, SinhHieuItem, DvktItem } from "../types/dibuong";
+import type { ThongTinVaoVienResponse, BuongPhongResponse, LanKhamItem, SinhHieuItem, DvktItem, DonThuocItem, DienBienItem, KetQuaDvktItem } from "../types/dibuong";
 
 export function getThongTinVaoVien(idBenhAn: string) {
   return request<ThongTinVaoVienResponse>("/async/api/dibuong/thongtinvaovien", {
@@ -31,6 +31,27 @@ export function getSinhHieuByPhieuKham(idPhieuKham: string) {
 
 export function getDvktByPhieuKham(idPhieuKham: string) {
   return request<DvktItem[]>("/async/api/dibuong/ds_dvkt", {
+    method: "GET",
+    query: { IdPhieuKham: idPhieuKham },
+  });
+}
+
+export function getDonThuocByPhieuKham(idPhieuKham: string) {
+  return request<DonThuocItem[]>("/async/api/dibuong/ds_donthuoc", {
+    method: "GET",
+    query: { IdPhieuKham: idPhieuKham },
+  });
+}
+
+export function getDienBienByPhieuKham(idPhieuKham: string) {
+  return request<DienBienItem[]>("/async/api/dibuong/ds_dienbien", {
+    method: "GET",
+    query: { IdPhieuKham: idPhieuKham },
+  });
+}
+
+export function getKetQuaDvktByPhieuKham(idPhieuKham: string) {
+  return request<KetQuaDvktItem[]>("/async/api/dibuong/ds_ketqua_dvkt", {
     method: "GET",
     query: { IdPhieuKham: idPhieuKham },
   });

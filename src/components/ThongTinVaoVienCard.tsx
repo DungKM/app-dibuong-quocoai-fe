@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { getThongTinVaoVien } from "../services/dibuong.api";
-import type { ThongTinVaoVienItem } from "../types/dibuong";
+import { ThongTinVaoVienItem } from "@/types/dibuong";
+import { getThongTinVaoVien } from "@/services/dibuong.api";
 
-export default function ThongTinVaoVienCard({ idBenhAn }: { idBenhAn: string }) {
+export const ThongTinVaoVienCard = ({ idBenhAn }: { idBenhAn: string }) =>{
   console.log(idBenhAn);
   const [item, setItem] = useState<ThongTinVaoVienItem | null>(null);
 
@@ -10,8 +10,6 @@ export default function ThongTinVaoVienCard({ idBenhAn }: { idBenhAn: string }) 
     if (!idBenhAn?.trim()) return;
     getThongTinVaoVien(idBenhAn.trim()).then((res) => setItem(res[0] ?? null));
   }, [idBenhAn]);
-
-  console.log(item);
 
   return (
     <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
