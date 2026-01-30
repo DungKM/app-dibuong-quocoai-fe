@@ -1,73 +1,20 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-
 import { api } from '@/services/api';
 import { aiService } from '@/services/ai';
-import { PatientStatus, VitalSign, NEWS2Result } from '@/types';
-import { SignatureCapture } from '@/components/SignatureCapture';
-import { AIAssistant } from '@/components/AIAssistant';
-import ThongTinVaoVienCard from '@/components/ThongTinVaoVienCard';
-import { EncounterList } from '@/components/EncounterList';
-import { VitalsTable } from '@/components/VitalsTable';
+import { useQuery } from '@tanstack/react-query';
 import { DvktList } from '@/components/DvktList';
+import { VitalsTable } from '@/components/VitalsTable';
+import { EncounterList } from '@/components/EncounterList';
+import { MedicationList } from '@/components/MedicationList';
+import { SignatureCapture } from '@/components/SignatureCapture';
+import { ThongTinVaoVienCard } from '@/components/ThongTinVaoVienCard';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { AIAssistant } from '@/components/AIAssistant';
+import { EncounterTimeline } from '@/components/EncounterTimeline';
+import { KetQuaDvktBrowser } from '@/components/KetQuaDvktBrowser';
+import { env } from '@/config/env';
 
-// --- NEWS2 Logic ---
-const calculateNEWS2 = (v: VitalSign): NEWS2Result => {
-    let score = 0;
-
-    // Respiratory Rate
-    if (v.respiratoryRate <= 8 || v.respiratoryRate >= 25) score += 3;
-    else if (v.respiratoryRate >= 21) score += 2;
-    else if (v.respiratoryRate <= 11) score += 1;
-
-    // SpO2 (Scale 1)
-    if (v.spO2 <= 91) score += 3;
-    else if (v.spO2 <= 93) score += 2;
-    else if (v.spO2 <= 95) score += 1;
-
-    // Systolic BP
-    if (v.bpSystolic <= 90 || v.bpSystolic >= 220) score += 3;
-    else if (v.bpSystolic <= 100) score += 2;
-    else if (v.bpSystolic <= 110) score += 1;
-
-    // Heart Rate
-    if (v.heartRate <= 40 || v.heartRate >= 131) score += 3;
-    else if (v.heartRate >= 111) score += 2;
-    else if (v.heartRate <= 50 || v.heartRate >= 91) score += 1;
-
-    // Temperature
-    if (v.temperature <= 35) score += 3;
-    else if (v.temperature >= 39.1) score += 2;
-    else if (v.temperature <= 36 || v.temperature >= 38.1) score += 1;
-
-    let level: NEWS2Result['level'] = 'LOW';
-    let color = 'bg-green-500';
-    let recommendation = 'Theo dõi thường quy (tối thiểu 12h/lần)';
-
-    if (score >= 7) {
-        level = 'HIGH';
-        color = 'bg-red-600';
-        recommendation = 'PHẢN ỨNG KHẨN CẤP (Theo dõi liên tục)';
-    } else if (score >= 5) {
-        level = 'MEDIUM';
-        color = 'bg-amber-600';
-        recommendation = 'CẢNH BÁO TRUNG BÌNH (Theo dõi mỗi 1h)';
-    } else if (score >= 3) {
-        level = 'LOW';
-        color = 'bg-amber-400';
-        recommendation = 'CẢNH BÁO THẤP (Theo dõi mỗi 4h)';
-    }
-
-    return { score, level, color, recommendation };
-};
-
-const STATUS_STYLE: Record<string, { cls: string; dot: string }> = {
-    "Có kết quả": { cls: "text-green-600", dot: "bg-green-500" },
-    "Đang thực hiện": { cls: "text-blue-600", dot: "bg-blue-500" },
-    "Đã hủy": { cls: "text-slate-400 line-through", dot: "bg-slate-300" },
-};
 export const PatientDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { search } = useLocation();
@@ -144,7 +91,6 @@ export const PatientDetail: React.FC = () => {
 
     if (pLoading) return <div className="text-center py-20"><i className="fa-solid fa-circle-notch fa-spin text-3xl text-primary"></i></div>;
 
-
     return (
         <div className="pb-20 relative">
             {/* <AIAssistant patient={patient} record={record} vitals={vitals} orders={orders} notes={notes} /> */}
@@ -211,7 +157,7 @@ export const PatientDetail: React.FC = () => {
                     </button>
                 ))}
             </div>
-            {activeTab !== "record" && activeTab !== "history" && activeTab !== "documents" && (
+            {activeTab !== "record" && activeTab !== "history" && (
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mb-4">
                     <div className="flex items-center justify-between gap-4">
                         <div>
@@ -248,327 +194,29 @@ export const PatientDetail: React.FC = () => {
                 </div>
             )
             }
+            {/* OTHER TABS (Placeholder/Existing) */}
+            {activeTab === 'record' && (
+                <ThongTinVaoVienCard idBenhAn={IdBenhAn} />
+            )}
             {/* TAB CONTENT: VITALS WITH TRENDS */}
             {activeTab === 'vitals' && (
                 <VitalsTable idPhieuKham={selectedEncounterId} />
             )}
             {/* TAB CONTENT: CLS/DVKT */}
             {activeTab === 'services' && (
-               <DvktList idPhieuKham={selectedEncounterId} />
+                <DvktList idPhieuKham={selectedEncounterId} />
             )}
             {/* TAB CONTENT: meds */}
             {activeTab === 'meds' && (
-                <div className="space-y-6">
-                    {[
-                        {
-                            encounterId: "enc-20260110-001",
-                            encounterCode: "3/26DT000000006",
-                            createdAt: "2026-01-10T09:51:00+07:00",
-                            doctorName: "BS. Lê Thị Phương Thảo",
-                            meds: [
-                                {
-                                    id: "m-001",
-                                    drugName: "Ceftriaxone 1g",
-                                    dose: "1g",
-                                    route: "TM",
-                                    frequency: "1 lần/ngày",
-                                    note: "Pha theo hướng dẫn",
-                                    status: "Chờ dùng thuốc",
-                                },
-                                {
-                                    id: "m-002",
-                                    drugName: "Paracetamol 500mg",
-                                    dose: "1 viên",
-                                    route: "Uống",
-                                    frequency: "Khi sốt > 38.5°C",
-                                    note: "Tối đa 4g/ngày",
-                                    status: "Đã hủy thuốc",
-                                },
-                                {
-                                    id: "m-003",
-                                    drugName: "Omeprazole 20mg",
-                                    dose: "1 viên",
-                                    route: "Uống",
-                                    frequency: "Sáng",
-                                    note: "",
-                                    status: "Đã dùng thuốc",
-                                },
-                            ],
-                        }
-                    ].map((enc) => (
-                        <div
-                            key={enc.encounterId}
-                            className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
-                        >
-                            {/* Danh sách thuốc */}
-                            <div className="p-6 space-y-3">
-                                {enc.meds.map((m) => {
-                                    const tone =
-                                        m.status === "Đã dùng thuốc"
-                                            ? "bg-green-50 border-green-100 text-green-700"
-                                            : m.status === "Đã hủy thuốc"
-                                                ? "bg-slate-50 border-slate-200 text-slate-500"
-                                                : m.status === "Chờ dùng thuốc"
-                                                    ? "bg-blue-50 border-blue-100 text-blue-700"
-                                                    : "bg-amber-50 border-amber-100 text-amber-700";
-
-                                    return (
-                                        <div
-                                            key={m.id}
-                                            className="rounded-3xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition p-5"
-                                        >
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="min-w-0">
-                                                    <div className="text-base md:text-lg font-black text-slate-900 truncate">
-                                                        {m.drugName}
-                                                    </div>
-
-                                                    <div className="mt-2 text-sm text-slate-600 font-bold flex flex-wrap gap-x-4 gap-y-1">
-                                                        <span className="inline-flex items-center gap-2">
-                                                            <i className="fa-solid fa-prescription-bottle-medical text-slate-400"></i>
-                                                            {m.dose}
-                                                        </span>
-                                                        <span className="inline-flex items-center gap-2">
-                                                            <i className="fa-solid fa-route text-slate-400"></i>
-                                                            {m.route}
-                                                        </span>
-                                                        <span className="inline-flex items-center gap-2">
-                                                            <i className="fa-regular fa-calendar-check text-slate-400"></i>
-                                                            {m.frequency}
-                                                        </span>
-                                                    </div>
-
-                                                    {m.note ? (
-                                                        <div className="mt-3 text-sm font-bold text-slate-500">
-                                                            <i className="fa-regular fa-note-sticky text-slate-400 mr-2"></i>
-                                                            {m.note}
-                                                        </div>
-                                                    ) : null}
-                                                </div>
-
-                                                <div className="shrink-0">
-                                                    <span
-                                                        className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-2xl border ${tone}`}
-                                                    >
-                                                        {m.status}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {enc.meds.length === 0 && (
-                                    <div className="border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-400 font-bold">
-                                        Không có đơn thuốc trong lần khám này.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {/* OTHER TABS (Placeholder/Existing) */}
-            {activeTab === 'record' && (
-                // <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
-                //     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                //         <div className="space-y-2">
-                //             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Lý do vào viện</label>
-                //             <div className="bg-slate-50 p-4 rounded-2xl text-slate-900 font-bold border border-slate-100">{record?.reasonForAdmission || '--'}</div>
-                //         </div>
-                //         <div className="space-y-2">
-                //             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Diễn biến bệnh</label>
-                //             <div className="bg-slate-50 p-4 rounded-2xl text-slate-900 font-bold border border-slate-100">{record?.medicalHistory || '--'}</div>
-                //         </div>
-                //         <div className="space-y-2">
-                //             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tiền sử bệnh bản thân</label>
-                //             <div className="bg-slate-50 p-4 rounded-2xl text-slate-900 font-bold border border-slate-100">{record?.medicalHistory || '--'}</div>
-                //         </div>
-                //         <div className="space-y-2">
-                //             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tiền sử bệnh gia đình</label>
-                //             <div className="bg-slate-50 p-4 rounded-2xl text-slate-900 font-bold border border-slate-100">{record?.medicalHistory || '--'}</div>
-                //         </div>
-                //         <div className="md:col-span-2 space-y-2">
-                //             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Chẩn đoán</label>
-                //             <div className="bg-slate-50 p-4 rounded-2xl text-slate-900 font-bold border border-slate-100 whitespace-pre-wrap">{record?.clinicalExamination || '--'}</div>
-                //         </div>
-                //         <div className="md:col-span-2 space-y-2">
-                //             <label className="text-[10px] font-black text-primary uppercase tracking-widest ml-1">Hướng điều trị</label>
-                //             <div className="bg-blue-50 p-6 rounded-3xl text-slate-900 font-black border border-blue-100 text-lg leading-relaxed">{record?.treatmentPlan || '--'}</div>
-                //         </div>
-                //     </div>
-                // </div>
-                <ThongTinVaoVienCard idBenhAn={IdBenhAn} />
+                <MedicationList idPhieuKham={selectedEncounterId} />
             )}
             {/* OTHER TABS Notes */}
             {activeTab === 'notes' && (
-                <div className="space-y-6">
-                    {[
-                        {
-                            encounterId: "enc-20260110-001",
-                            encounterCode: "3/26DT000000006",
-                            createdAt: "2026-01-10T09:51:00+07:00",
-                            doctorName: "BS. Lê Thị Phương Thảo",
-                            notes: [
-                                {
-                                    id: "n-002",
-                                    time: "2026-01-10T14:40:00+07:00",
-                                    author: "BS. Lê Thị Phương Thảo",
-                                    type: "Bác sĩ",
-                                    content:
-                                        "Đánh giá: sốt giảm, đau giảm. Tiếp tục kháng sinh theo phác đồ. Chỉ định thêm X-quang phổi, theo dõi CRP.",
-                                }
-                            ],
-                        },
-                        {
-                            encounterId: "enc-20260107-001",
-                            encounterCode: "1/26PK000000006",
-                            createdAt: "2026-01-07T10:19:00+07:00",
-                            doctorName: "BS. Nguyễn Văn A",
-                            notes: [
-                                {
-                                    id: "n-004",
-                                    time: "2026-01-07T10:50:00+07:00",
-                                    author: "BS. Nguyễn Văn A",
-                                    type: "Bác sĩ",
-                                    content:
-                                        "Khám ban đầu: ho, sốt nhẹ 2 ngày. Phổi thông khí tốt. Chẩn đoán theo dõi nhiễm siêu vi. Dặn theo dõi, uống thuốc theo toa.",
-                                }
-                            ],
-                        },
-                    ].map((enc) => (
-                        <div
-                            key={enc.encounterId}
-                            className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
-                        >
-                            {/* Timeline diễn biến */}
-                            <div className="p-6">
-                                <div className="space-y-4">
-                                    {enc.notes.map((n) => {
-                                        const tone =
-                                            n.type === "Bác sĩ"
-                                                ? "bg-indigo-50 border-indigo-100 text-indigo-700"
-                                                : "bg-emerald-50 border-emerald-100 text-emerald-700";
-
-                                        return (
-                                            <div key={n.id} className="flex gap-4">
-                                                {/* Dot + line */}
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-3 h-3 rounded-full bg-slate-900 mt-2" />
-                                                    <div className="w-px flex-1 bg-slate-200 mt-2" />
-                                                </div>
-
-                                                {/* Content card */}
-                                                <div className="flex-1 rounded-3xl border border-slate-200 p-5 hover:bg-slate-50 transition">
-                                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-2xl border ${tone}`}>
-                                                                {n.type}
-                                                            </span>
-                                                            <div className="text-sm font-black text-slate-900">
-                                                                {n.author}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-xs font-bold text-slate-500 inline-flex items-center gap-2">
-                                                            <i className="fa-regular fa-clock text-slate-400"></i>
-                                                            {new Date(n.time).toLocaleString("vi-VN")}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mt-3 text-slate-700 font-bold whitespace-pre-wrap leading-relaxed">
-                                                        {n.content}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {enc.notes.length === 0 && (
-                                        <div className="border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-400 font-bold">
-                                            Chưa có diễn biến trong lần khám này.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <EncounterTimeline idPhieuKham={selectedEncounterId} />
             )}
             {/* OTHER TABS Documents */}
             {activeTab === "documents" && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-[500px]">
-                        {/* LEFT */}
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-y-auto p-4 max-h-[200px] md:max-h-full">
-                            <h3 className="font-bold text-slate-800 mb-4 text-sm uppercase">
-                                Danh mục hồ sơ
-                            </h3>
-
-                            <ul className="space-y-2">
-                                <li>
-                                    <div className="font-bold text-slate-700 text-sm mb-1">Hồ sơ bệnh án</div>
-                                    <ul className="pl-4 border-l-2 border-slate-100 space-y-1">
-                                        <li className="text-sm cursor-pointer px-2 py-1 rounded hover:bg-slate-50 text-slate-600">
-                                            <i className="fa-regular fa-folder mr-2" />
-                                            Xét Nghiệm Sinh Hóa Máu - Xét nghiệm sinh hóa KT thực hiện
-                                        </li>
-                                        <li className="text-sm cursor-pointer px-2 py-1 rounded hover:bg-slate-50 text-slate-600">
-                                            <i className="fa-regular fa-folder mr-2" />
-                                            Chụp Xquang ngực thẳng [số hóa 1 phim]
-                                        </li>
-                                        <li className="text-sm cursor-pointer px-2 py-1 rounded hover:bg-slate-50 bg-blue-50 text-primary font-medium">
-                                            <i className="fa-regular fa-folder mr-2" />
-                                            Phiếu vào viện
-                                        </li>
-                                    </ul>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* RIGHT */}
-                        <div className="md:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col min-h-[300px]">
-                            {/* Header */}
-                            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                                <div>
-                                    <div className="text-xs text-slate-500 mb-0.5">Danh mục đang chọn</div>
-                                    <h3 className="font-bold text-slate-800 truncate max-w-[200px] sm:max-w-none">
-                                        Phiếu vào viện
-                                    </h3>
-                                </div>
-
-                                <label className="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-sky-600 transition flex items-center whitespace-nowrap">
-                                    <i className="fa-solid fa-camera mr-2" />
-                                    <span className="hidden sm:inline">Upload File</span>
-                                    <input type="file" className="hidden" />
-                                </label>
-                            </div>
-
-                            {/* Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className="w-8 h-8 bg-red-100 text-red-500 rounded flex flex-shrink-0 items-center justify-center">
-                                                <i className="fa-solid fa-file-pdf" />
-                                            </div>
-
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium text-slate-800 truncate">
-                                                    XN_Mau_2510.pdf
-                                                </p>
-                                                <p className="text-[10px] text-slate-400">10/25/2023 • 1.2 MB</p>
-                                            </div>
-                                        </div>
-
-                                        <button type="button" className="text-slate-400 hover:text-primary px-2">
-                                            <i className="fa-solid fa-download" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+               <KetQuaDvktBrowser idPhieuKham={selectedEncounterId} baseFileUrl={env.API_BASE_URL} />
             )}
 
             {/* OTHER TABS history */}

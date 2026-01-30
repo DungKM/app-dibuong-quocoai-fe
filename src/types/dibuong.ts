@@ -20,14 +20,14 @@ export interface BuongPhongResponse {
 }
 
 export interface PhongItem {
-  Ma: string;           
+  Ma: string;
   SoGiuong: number;
   SoBenhNhan: number;
   DsGiuong: GiuongItem[];
 }
 
 export interface GiuongItem {
-  MaGiuong: string;     
+  MaGiuong: string;
   isTyc: boolean;
   DsBenhAn: BenhAnItem[];
 }
@@ -106,7 +106,45 @@ export interface SinhHieuItem {
 export interface DvktItem {
   TenDVKT: string;
   TenBacSiChiDinh: string | null;
-  NgayChiDinh: string | null;  
+  NgayChiDinh: string | null;
   TrangThai: string | null;
   IdNhomChiPhi: string | null;
 }
+export interface DonThuocItem {
+  MaDonThuoc: string;
+  IdPhieuThuoc: string;
+  IdPhieuKham: string;
+  IdBenhAn: string;
+  Ten: string;
+  SoLuong: number | null;
+  SoLuongHuy: number | null;
+  DonVi: string | null;
+  NgayKeThuoc: string | null;
+  TenBacSiKeThuoc: string | null;
+  GhiChuLieuDung: string | null;
+  LieuDung: string | null;
+  TrangThai: string | null;
+}
+export type CachDungJson = {
+  CachDung?: string;
+  ThoiGianSang?: string;
+  ThoiGianTrua?: string;
+  ThoiGianChieu?: string;
+  ThoiGianToi?: string;
+  SoNgayKe?: number;
+};
+export interface DienBienItem {
+  IdPhieuKham: string;
+  IdBenhAn: string;
+  DienBienBenh: string | null;
+  BacSiKham: string | null;
+  NgayThucKham: string | null; // ISO
+}
+
+export interface KetQuaDvktItem {
+  IdPhieuKham: string;
+  IdBenhAn: string;
+  TenDVKT: string;
+  LinkUrls: string | null; // ✅ sửa
+}
+
