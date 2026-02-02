@@ -4,10 +4,11 @@ import { getDienBienByPhieuKham } from "@/services/dibuong.api";
 import type { DienBienItem } from "@/types/dibuong";
 
 type Props = {
-  idPhieuKham: string | null; // selectedEncounterId
+  idPhieuKham: string | null; 
 };
 
 type NoteUI = {
+  
   id: string;
   time: string;
   author: string;

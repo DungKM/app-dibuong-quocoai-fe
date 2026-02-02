@@ -148,3 +148,53 @@ export interface KetQuaDvktItem {
   LinkUrls: string | null; // ✅ sửa
 }
 
+export interface TongHopLinhItem {
+  IdBenhNhan: string;
+  TenBenhNhan: string;
+  MaBenhNhan: string;
+  ThongTinThem: string | null;
+  DsDonThuoc: TongHopLinhThuocItem[];
+}
+
+export interface TongHopLinhThuocItem {
+  MaThuoc: string;
+  TenThuoc: string;
+  SoLuong: number;
+  DonVi: string | null;
+  IdBenhAn: string;
+  IdBenhNhan: string;
+  ThongTinThem: string | null;
+}
+
+export enum ShiftType  {
+  MORNING = "MORNING",
+  NOON = "NOON",
+  AFTERNOON = "AFTERNOON",
+  NIGHT = "NIGHT",
+}
+
+export type SlotKey = "SANG" | "TRUA" | "CHIEU" | "TOI";
+
+export const SHIFT_TO_SLOT: Record<ShiftType, SlotKey> = {
+  [ShiftType.MORNING]: "SANG",
+  [ShiftType.NOON]: "TRUA",
+  [ShiftType.AFTERNOON]: "CHIEU",
+  [ShiftType.NIGHT]: "TOI",
+};
+
+export type ShiftStat = { used: number; pending: number; returned: number };
+
+export type MarSummary = {
+  shifts: Record<ShiftType, ShiftStat>;
+};
+
+export type MedVisitLite = {
+  id: string; 
+  patientName: string;
+  patientCode: string;
+  patientGender?: string;
+  room: string; 
+  bed: string; 
+  idPhieuKham?: string; 
+  marSummary: MarSummary;
+};

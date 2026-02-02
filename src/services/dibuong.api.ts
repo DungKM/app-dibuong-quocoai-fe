@@ -1,5 +1,5 @@
 import { request } from "./http";
-import type { ThongTinVaoVienResponse, BuongPhongResponse, LanKhamItem, SinhHieuItem, DvktItem, DonThuocItem, DienBienItem, KetQuaDvktItem } from "../types/dibuong";
+import type { ThongTinVaoVienResponse, BuongPhongResponse, LanKhamItem, SinhHieuItem, DvktItem, DonThuocItem, DienBienItem, KetQuaDvktItem, TongHopLinhItem } from "../types/dibuong";
 
 export function getThongTinVaoVien(idBenhAn: string) {
   return request<ThongTinVaoVienResponse>("/async/api/dibuong/thongtinvaovien", {
@@ -54,5 +54,12 @@ export function getKetQuaDvktByPhieuKham(idPhieuKham: string) {
   return request<KetQuaDvktItem[]>("/async/api/dibuong/ds_ketqua_dvkt", {
     method: "GET",
     query: { IdPhieuKham: idPhieuKham },
+  });
+}
+
+export function getTongHopLinh(idKhoa: string) {
+  return request<TongHopLinhItem[]>("/async/api/dibuong/ds_tong_hop_linh", {
+    method: "GET",
+    query: { IdKhoa: idKhoa },
   });
 }

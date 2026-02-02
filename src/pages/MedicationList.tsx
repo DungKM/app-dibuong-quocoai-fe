@@ -1,126 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, Link } from 'react-router-dom';
-import { api } from '@/services/api';
-import { ShiftType, ShiftStatus, MedVisit, MARStatus } from '@/types';
+import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-const MiniShiftOverview: React.FC<{
-  label: string;
-  used: number;
-  pending: number;
-  isActive?: boolean;
-}> = ({ label, used, pending, isActive }) => (
-  <div className={`flex flex-col items-center flex-1 py-0.5 rounded-lg transition-all ${isActive ? 'bg-primary text-white ring-1 ring-primary/20 shadow-sm' : 'bg-slate-50 text-slate-400'}`}>
-    <span className="text-[6px] font-black uppercase mb-0">{label}</span>
-    <div className="flex gap-0.5 items-center">
-      <span className={`text-[9px] font-black ${isActive ? 'text-white' : (used > 0 ? 'text-primary' : 'text-slate-300')}`}>{used}</span>
-      <span className="text-[6px] opacity-10">/</span>
-      <span className={`text-[9px] font-black ${isActive ? 'text-white' : (pending > 0 ? 'text-amber-500' : 'text-slate-300')}`}>{pending}</span>
-    </div>
-  </div>
-);
+import { getBuongPhong, getDonThuocByPhieuKham } from "@/services/dibuong.api";
+import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/types/dibuong";
+import { MedicationBedCard } from "@/components/MedicationBedCard";
+import { buildAllShiftStats } from "@/components/buildAllShiftStats";
 
-const MedicationBedCard: React.FC<{
-  bedCode: string;
-  visit?: MedVisit;
-  activeShift: ShiftType;
-  isClosed: boolean;
-}> = ({ bedCode, visit, activeShift, isClosed }) => {
-  const navigate = useNavigate();
-  const isOccupied = !!visit;
-
-  // Dữ liệu shift lấy trực tiếp từ API (đã được tính toán trong api.ts)
-  const shiftStats = visit?.marSummary?.shifts;
-  const current = shiftStats ? shiftStats[activeShift] : { used: 0, pending: 0, returned: 0 };
-
-  const hasReturns = current.returned > 0;
-  const hasPending = current.pending > 0;
-
-  const getStatusClasses = () => {
-    if (!isOccupied) return "bg-slate-50 border-dashed border-slate-300 opacity-90 cursor-default";
-    if (hasReturns) return 'bg-purple-50 border-purple-300 ring-2 ring-purple-100';
-    if (hasPending) return 'bg-amber-50 border-amber-300 ring-1 ring-amber-100 shadow-sm';
-    if (current.used > 0) return 'bg-blue-50 border-primary/20';
-    return 'bg-white border-slate-200 shadow-sm';
-  };
-
-  return (
-    <div
-      onClick={() => isOccupied && navigate(`/medication/${visit.id}?shift=${activeShift}`)}
-      className={`relative h-44 rounded-[28px] border-2 transition-all duration-300 p-4 flex flex-col justify-between cursor-pointer hover:shadow-xl hover:-translate-y-1 ${getStatusClasses()} ${isClosed && isOccupied ? 'opacity-90' : ''}`}
-    >
-      <div className="flex justify-between items-start">
-        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shadow-sm ${isOccupied ? 'bg-white text-primary border border-primary/10' : 'bg-slate-50 text-slate-300'}`}>
-          {bedCode}
-        </span>
-        {isOccupied && hasReturns && (
-          <span className="bg-purple-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full animate-pulse uppercase tracking-wider">Cần trả kho</span>
-        )}
-      </div>
-
-      {isOccupied ? (
-        <div className="min-w-0 flex-1 flex flex-col justify-center my-1">
-          <h3 className="text-base font-black text-slate-900 leading-tight truncate uppercase tracking-tight">
-            {visit.patientName}
-          </h3>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-0.5">
-            <span className="text-primary font-mono tracking-tighter">{visit.patientCode}</span>
-            <span>•</span>
-            <span className="uppercase">{visit.patientGender}</span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center flex-1 opacity-5">
-          <i className="fa-solid fa-bed text-4xl"></i>
-        </div>
-      )}
-
-      {isOccupied && shiftStats && (
-        <div className="space-y-1.5 mt-auto pt-2 border-t border-slate-100">
-          <div className="grid grid-cols-3 gap-0.5 text-center">
-            <div>
-              <div className="text-[6px] font-black text-slate-400 uppercase">Dùng</div>
-              <div className={`text-base font-black ${current.used > 0 ? 'text-primary' : 'text-slate-200'}`}>{current.used}</div>
-            </div>
-            <div className="border-x border-slate-100">
-              <div className="text-[6px] font-black text-slate-400 uppercase">Chờ</div>
-              <div className={`text-base font-black ${current.pending > 0 ? 'text-amber-500 animate-pulse' : 'text-slate-200'}`}>{current.pending}</div>
-            </div>
-            <div>
-              <div className="text-[6px] font-black text-slate-400 uppercase">Trả</div>
-              <div className={`text-base font-black ${current.returned > 0 ? 'text-purple-600' : 'text-slate-200'}`}>{current.returned}</div>
-            </div>
-          </div>
-
-          <div className="flex gap-0.5 bg-slate-100/50 p-0.5 rounded-lg">
-            <MiniShiftOverview label="S" {...shiftStats[ShiftType.MORNING]} isActive={activeShift === ShiftType.MORNING} />
-            <MiniShiftOverview label="T" {...shiftStats[ShiftType.NOON]} isActive={activeShift === ShiftType.NOON} />
-            <MiniShiftOverview label="C" {...shiftStats[ShiftType.AFTERNOON]} isActive={activeShift === ShiftType.AFTERNOON} />
-            <MiniShiftOverview label="Đ" {...shiftStats[ShiftType.NIGHT]} isActive={activeShift === ShiftType.NIGHT} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+const KHOA_OPTIONS = [
+  { id: "41CA5C91-F449-404F-B37B-00EFE98B8375", name: "Khoa Nhi" },
+];
 
 export const MedicationList: React.FC = () => {
   const [activeShift, setActiveShift] = useState<ShiftType>(ShiftType.MORNING);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const deptCode = 'NOI1';
-  const [showCloseModal, setShowCloseModal] = useState(false);
-
-  const queryClient = useQueryClient();
-
-  const { data: visits, isLoading } = useQuery({
-    queryKey: ['mar-patients', selectedDate, deptCode, activeShift],
-    queryFn: () => api.getMARPatients({ fromDate: selectedDate, toDate: selectedDate, deptCode })
-  });
-
-  const { data: shiftSummary } = useQuery({
-    queryKey: ['shift-summary', activeShift, selectedDate],
-    queryFn: () => api.getShiftSummary(activeShift),
-  });
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [idKhoa, setIdKhoa] = useState<string>(KHOA_OPTIONS[0].id);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -130,29 +23,87 @@ export const MedicationList: React.FC = () => {
     else setActiveShift(ShiftType.NIGHT);
   }, []);
 
+  /** 1) Lấy buồng/giường */
+  const {
+    data: wardData,
+    isLoading: isLoadingWard,
+    error: wardError,
+  } = useQuery<BuongPhongResponse>({
+    queryKey: ["buongphong", idKhoa],
+    queryFn: () => getBuongPhong(idKhoa),
+    enabled: !!idKhoa,
+  });
+
+  /** 2) Gom list idPhieuKham để call thuốc */
+  const phieuKhamIds = useMemo(() => {
+    const set = new Set<string>();
+    wardData?.DSPhong?.forEach((phong: any) => {
+      phong?.DsGiuong?.forEach((giuong: any) => {
+        const benhAn = giuong?.DsBenhAn?.[0];
+        const idPhieuKham = benhAn?.IdPhieuKham || benhAn?.IdLanKham || benhAn?.VisitId; // tuỳ data thực tế
+        if (idPhieuKham) set.add(String(idPhieuKham));
+      });
+    });
+    return Array.from(set);
+  }, [wardData]);
+
+  /** 3) Fetch thuốc theo từng idPhieuKham */
+  const {
+    data: medsByVisit,
+    isLoading: isLoadingMeds,
+    error: medsError,
+  } = useQuery<Record<string, DonThuocItem[]>>({
+    queryKey: ["medsByVisit", phieuKhamIds, selectedDate],
+    enabled: phieuKhamIds.length > 0,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        phieuKhamIds.map(async (id) => {
+          const meds = await getDonThuocByPhieuKham(id);
+          return [id, meds] as const;
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+  });
+
+  /** 4) Map sang UI wardLayout của bạn */
   const wardLayout = useMemo(() => {
-    if (!visits) return [];
-    const roomsMap: Record<string, { room: string, beds: { code: string, visit?: MedVisit }[] }> = {};
-    const ROOMS_CONFIG = ['P401', 'P402', 'P501', 'CC01'];
+    if (!wardData?.DSPhong) return [];
 
-    ROOMS_CONFIG.forEach(r => {
-      roomsMap[r] = { room: r, beds: [] };
-      const bedCount = r === 'CC01' ? 4 : 6;
-      for (let i = 1; i <= bedCount; i++) {
-        roomsMap[r].beds.push({ code: `G${i.toString().padStart(2, '0')}` });
-      }
-    });
+    return wardData.DSPhong.map((phong: any) => ({
+      room: phong.Ma, // ví dụ "P401"
+      beds: (phong.DsGiuong ?? []).map((giuong: any) => {
+        const benhAn = giuong?.DsBenhAn?.[0];
+        const bedCode = giuong?.MaGiuong ?? "--";
 
-    visits.forEach(v => {
-      if (roomsMap[v.room]) {
-        const bedIndex = roomsMap[v.room].beds.findIndex(b => b.code === v.bed || b.code === `G${v.bed.replace(/\D/g, '').padStart(2, '0')}`);
-        if (bedIndex !== -1) roomsMap[v.room].beds[bedIndex].visit = v;
-      }
-    });
-    return Object.values(roomsMap);
-  }, [visits]);
+        if (!benhAn) return { code: bedCode, visit: undefined as MedVisitLite | undefined };
 
-  const isClosed = shiftSummary?.status === ShiftStatus.LOCKED;
+        const idPhieuKham = benhAn?.IdPhieuKham || benhAn?.IdLanKham || benhAn?.VisitId;
+        const meds = idPhieuKham ? medsByVisit?.[String(idPhieuKham)] ?? [] : [];
+
+        const shifts = buildAllShiftStats(meds, selectedDate);
+
+        const visit: MedVisitLite = {
+          id: String(benhAn.IdBenhAn),
+          patientName: benhAn.HoTenBenhNhan,
+          patientCode: benhAn.MaBenhNhan,
+          patientGender: benhAn.GioiTinh,
+          room: String(phong.Ma),
+          bed: String(bedCode),
+          idPhieuKham: idPhieuKham ? String(idPhieuKham) : undefined,
+          marSummary: { shifts },
+        };
+
+        return { code: bedCode, visit };
+      }),
+    }));
+  }, [wardData, medsByVisit, selectedDate]);
+
+  /** Nếu bạn chưa có API "chốt ca", tạm để false */
+  const isClosed = false;
+
+  const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
+  const error = wardError || medsError;
 
   return (
     <div className="space-y-6 pb-24 max-w-[1300px] mx-auto">
@@ -162,15 +113,38 @@ export const MedicationList: React.FC = () => {
           <div className="w-16 h-16 bg-primary text-white rounded-[24px] flex items-center justify-center text-3xl shadow-xl shadow-primary/20 transform -rotate-2">
             <i className="fa-solid fa-pills"></i>
           </div>
+
           <div>
             <h1 className="text-3xl font-black text-slate-900 uppercase leading-none mb-1 tracking-tighter">
               Thực hiện dùng thuốc
-              {isClosed && <span className="ml-3 bg-red-600 text-white text-[8px] px-2 py-1 rounded-full uppercase font-black align-middle tracking-widest shadow-md animate-pulse"><i className="fa-solid fa-lock mr-1"></i>Đã chốt</span>}
+              {isClosed && (
+                <span className="ml-3 bg-red-600 text-white text-[8px] px-2 py-1 rounded-full uppercase font-black align-middle tracking-widest shadow-md animate-pulse">
+                  <i className="fa-solid fa-lock mr-1"></i>Đã chốt
+                </span>
+              )}
             </h1>
+
             <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-              <span className="flex items-center gap-1.5 font-bold bg-blue-50 text-primary px-3 py-1 rounded-full"><i className="fa-solid fa-hospital"></i> Khoa Sản</span>
+              {/* Khoa */}
+              <span className="flex items-center gap-1.5 font-bold bg-blue-50 text-primary px-3 py-1 rounded-full">
+                <i className="fa-solid fa-hospital"></i>{" "}
+                <select
+                  value={idKhoa}
+                  onChange={(e) => setIdKhoa(e.target.value)}
+                  className="bg-transparent outline-none font-black"
+                >
+                  {KHOA_OPTIONS.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+
               <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-              <span className="flex items-center gap-1.5"><i className="fa-solid fa-shield-halved"></i> Giám sát 5 đúng</span>
+              <span className="flex items-center gap-1.5">
+                <i className="fa-solid fa-shield-halved"></i> Giám sát 5 đúng
+              </span>
             </div>
           </div>
         </div>
@@ -181,25 +155,14 @@ export const MedicationList: React.FC = () => {
             <input
               type="date"
               value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
+              onChange={(e) => setSelectedDate(e.target.value)}
               className="text-xs font-black border-none focus:ring-0 text-slate-800 bg-transparent outline-none cursor-pointer"
             />
           </div>
-
-          {/* <div className="flex gap-2">
-            <button
-              onClick={() => setShowCloseModal(true)}
-              className={`px-6 py-3 rounded-2xl font-black text-xs uppercase shadow-lg flex items-center gap-2 transition-all active:scale-95 whitespace-nowrap ${isClosed ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-primary text-white hover:bg-sky-600 shadow-primary/20'}`}
-            >
-              {isClosed ? <><i className="fa-solid fa-lock-open"></i> Mở ca trực</> : <><i className="fa-solid fa-check-double"></i> Chốt ca trực</>}
-            </button>
-            <Link to="/medication/ward-stock" className="bg-white border border-slate-200 text-slate-500 px-6 py-3 rounded-2xl font-black text-xs uppercase shadow-sm hover:bg-slate-50 hover:text-primary transition flex items-center gap-2">
-              <i className="fa-solid fa-box-archive"></i> Tủ trực
-            </Link>
-          </div> */}
         </div>
       </div>
 
+      {/* Tabs ca */}
       <div className="bg-slate-200/30 p-2 rounded-2xl flex gap-2 shadow-inner w-full max-w-5xl mx-auto">
         {[
           { id: ShiftType.MORNING, label: "Sáng", range: "06-12h", icon: "fa-sun" },
@@ -211,47 +174,43 @@ export const MedicationList: React.FC = () => {
             key={s.id}
             onClick={() => setActiveShift(s.id)}
             className={`flex-1 py-3.5 rounded-2xl transition-all flex flex-col items-center justify-center group relative overflow-hidden
-        ${activeShift === s.id
-                ? "bg-white text-primary shadow-sm scale-[1.02]"
-                : "text-slate-500 hover:bg-white/50"
-              }`}
+              ${activeShift === s.id ? "bg-white text-primary shadow-sm scale-[1.02]" : "text-slate-500 hover:bg-white/50"}`}
           >
             <div className="flex items-center gap-2">
               <i
                 className={`fa-solid ${s.icon} text-[12px] ${activeShift === s.id ? "text-primary" : "text-slate-300"
                   }`}
               />
-              <span className="text-[11px] font-extrabold uppercase tracking-wider">
-                {s.label}
-              </span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider">{s.label}</span>
             </div>
-
-            <span className="text-[9px] font-bold opacity-60 leading-none mt-1">
-              {s.range}
-            </span>
-
-            {activeShift === s.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />
-            )}
+            <span className="text-[9px] font-bold opacity-60 leading-none mt-1">{s.range}</span>
+            {activeShift === s.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-40"><i className="fa-solid fa-circle-notch fa-spin text-5xl text-primary opacity-20"></i></div>
+        <div className="flex justify-center py-40">
+          <i className="fa-solid fa-circle-notch fa-spin text-5xl text-primary opacity-20"></i>
+        </div>
+      ) : error ? (
+        <div className="max-w-[1300px] mx-auto p-6 bg-red-50 border border-red-200 text-red-700 font-bold rounded-3xl">
+          Lỗi tải dữ liệu: {String((error as any)?.message || error)}
+        </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
           {wardLayout.map((room) => (
             <section key={room.room} className="space-y-4">
               <div className="flex items-center gap-4 px-4">
                 <div className="w-12 h-12 bg-slate-900 text-white rounded-[18px] flex items-center justify-center font-black text-xl shadow-lg border-2 border-white transform rotate-3">
-                  {room.room.replace(/\D/g, '')}
+                  {String(room.room).replace(/\D/g, "") || "--"}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-black text-xl text-slate-800 uppercase tracking-tight">Phòng {room.room}</h3>
                 </div>
                 <div className="h-px flex-1 bg-slate-100"></div>
               </div>
+
               <div className="grid grid-cols-2 gap-6">
                 {room.beds.map((bed, idx) => (
                   <MedicationBedCard
@@ -267,6 +226,14 @@ export const MedicationList: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* cảnh báo nếu không có idPhieuKham => không tính được thuốc */}
+      {!isLoading && !error && phieuKhamIds.length === 0 ? (
+        <div className="max-w-[1300px] mx-auto p-5 bg-amber-50 border border-amber-200 text-amber-800 font-bold rounded-3xl">
+          ⚠️ Không tìm thấy <b>IdPhieuKham / IdLanKham / VisitId</b> trong DsBenhAn nên chưa thể gọi{" "}
+          <b>getDonThuocByPhieuKham()</b> để tính số thuốc theo ca.
+        </div>
+      ) : null}
     </div>
   );
 };
