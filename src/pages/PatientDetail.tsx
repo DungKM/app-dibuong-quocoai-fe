@@ -142,7 +142,7 @@ export const PatientDetail: React.FC = () => {
                     { id: 'vitals', label: 'Sinh hiệu', icon: 'fa-heart-pulse' },
                     { id: 'notes', label: 'Diễn biến', icon: 'fa-clipboard-user' },
                     { id: 'documents', label: 'Tài liệu', icon: 'fa-book' },
-                    { id: 'history', label: 'Lịch sử', icon: 'fa-briefcase' },
+                    // { id: 'history', label: 'Lịch sử', icon: 'fa-briefcase' },
                 ].map(tab => (
                     <button
                         key={tab.id}

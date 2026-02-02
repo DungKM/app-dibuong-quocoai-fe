@@ -10,17 +10,11 @@ import avatar from "@/assets/avatar.jpg";
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
-
-  // Poll for Sync Status
-  const { data: queue } = useQuery({ 
-      queryKey: ['sync-queue'], 
-      queryFn: api.getSyncQueue,
-      refetchInterval: 5000 // Poll every 5s to check sync status
+  const { data: queue } = useQuery({
+    queryKey: ['sync-queue'],
+    queryFn: api.getSyncQueue,
+    refetchInterval: 5000
   });
-
-  /* Fix: Cast queue to SyncQueueItem[] to fix filter error */
-  const failedItems = (queue as SyncQueueItem[])?.filter(i => i.status === SyncStatus.FAILED) || [];
-  const pendingItems = (queue as SyncQueueItem[])?.filter(i => i.status === SyncStatus.PENDING || i.status === SyncStatus.SYNCING) || [];
 
   if (!user) return null;
 
@@ -36,73 +30,52 @@ export const Layout: React.FC = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
                 <i className="fa-solid fa-hospital"></i>
               </div>
-              {/* Hide text on very small screens if needed, but show on normal mobile */}
               <span className="font-bold text-lg text-slate-800 block">MediRound</span>
             </Link>
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex gap-1 lg:gap-4">
-                <div className="relative group">
-                    <button className={`text-sm font-medium px-3 py-2 rounded-md transition whitespace-nowrap flex items-center gap-1 ${location.pathname.startsWith('/treatment') ? 'text-primary bg-primary/5' : 'text-slate-600 hover:text-slate-900'}`}>
-                        Đi buồng <i className="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                    <div className="absolute top-full left-0 bg-white border border-slate-200 rounded-lg shadow-lg w-48 py-1 hidden group-hover:block animate-fade-in">
-                        <Link to="/treatment" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
-                            Danh sách bệnh nhân
-                        </Link>
-                        <Link to="/rounds/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold">
+              <div className="relative group">
+                <button className={`text-sm font-medium px-3 py-2 rounded-md transition whitespace-nowrap flex items-center gap-1 ${location.pathname.startsWith('/treatment') ? 'text-primary bg-primary/5' : 'text-slate-600 hover:text-slate-900'}`}>
+                  Đi buồng <i className="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+                <div className="absolute top-full left-0 bg-white border border-slate-200 rounded-lg shadow-lg w-48 py-1 hidden group-hover:block animate-fade-in">
+                  <Link to="/treatment" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
+                    Danh sách bệnh nhân
+                  </Link>
+                  {/* <Link to="/rounds/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold">
                             Giám sát đi buồng
-                        </Link>
-                    </div>
+                        </Link> */}
                 </div>
-                
-                {/* <Link to="/surgery" className={`text-sm font-medium px-3 py-2 rounded-md transition whitespace-nowrap ${location.pathname.startsWith('/surgery') ? 'text-primary bg-primary/5' : 'text-slate-600 hover:text-slate-900'}`}>
+              </div>
+
+              {/* <Link to="/surgery" className={`text-sm font-medium px-3 py-2 rounded-md transition whitespace-nowrap ${location.pathname.startsWith('/surgery') ? 'text-primary bg-primary/5' : 'text-slate-600 hover:text-slate-900'}`}>
                     DVKT
                 </Link> */}
-                <div className="relative group">
-                    <button className={`text-sm font-medium px-3 py-2 rounded-md transition whitespace-nowrap flex items-center gap-1 ${location.pathname.startsWith('/medication') || location.pathname.startsWith('/rx') || location.pathname.startsWith('/compliance') ? 'text-primary bg-primary/5' : 'text-slate-600 hover:text-slate-900'}`}>
-                        Cấp phát thuốc <i className="fa-solid fa-chevron-down text-[10px]"></i>
-                    </button>
-                    <div className="absolute top-full left-0 bg-white border border-slate-200 rounded-lg shadow-lg w-56 py-1 hidden group-hover:block animate-fade-in">
-                        <Link to="/rx/inbox" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary border-b border-slate-100">
-                            <i className="fa-solid fa-inbox mr-2 text-slate-400"></i>Tiếp nhận Y lệnh (HIS)
-                        </Link>
-                        <Link to="/medication" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
-                            Cấp phát tại khoa (MAR)
-                        </Link>
-                        {/* <Link to="/medication/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
+              <div className="relative group">
+                <button className={`text-sm font-medium px-3 py-2 rounded-md transition whitespace-nowrap flex items-center gap-1 ${location.pathname.startsWith('/medication') || location.pathname.startsWith('/rx') || location.pathname.startsWith('/compliance') ? 'text-primary bg-primary/5' : 'text-slate-600 hover:text-slate-900'}`}>
+                  Cấp phát thuốc <i className="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+                <div className="absolute top-full left-0 bg-white border border-slate-200 rounded-lg shadow-lg w-56 py-1 hidden group-hover:block animate-fade-in">
+                  <Link to="/rx/inbox" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary border-b border-slate-100">
+                    <i className="fa-solid fa-inbox mr-2 text-slate-400"></i>Tiếp nhận Y lệnh (HIS)
+                  </Link>
+                  <Link to="/medication" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
+                    Cấp phát tại khoa (MAR)
+                  </Link>
+                  {/* <Link to="/medication/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
                             Theo dõi cấp phát
                         </Link> */}
-                        <Link to="/compliance/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold border-t border-slate-100">
+                  {/* <Link to="/compliance/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold border-t border-slate-100">
                             <i className="fa-solid fa-tower-observation mr-2 text-slate-400"></i>Dashboard Tuân thủ
-                        </Link>
-                    </div>
+                        </Link> */}
                 </div>
+              </div>
             </nav>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-             {/* SYNC INDICATOR */}
-             <Link to="/sync/dashboard" className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 transition" title="Trạng thái đồng bộ HIS">
-                 {failedItems.length > 0 ? (
-                     <div className="flex items-center gap-1 text-red-600 animate-pulse font-bold text-xs">
-                         <i className="fa-solid fa-triangle-exclamation"></i>
-                         <span className="hidden sm:inline">{failedItems.length} Lỗi Sync</span>
-                     </div>
-                 ) : pendingItems.length > 0 ? (
-                     <div className="flex items-center gap-1 text-blue-600 text-xs">
-                         <i className="fa-solid fa-rotate fa-spin"></i>
-                         <span className="hidden sm:inline">Đang gửi...</span>
-                     </div>
-                 ) : (
-                     <div className="flex items-center gap-1 text-green-600 text-xs">
-                         <i className="fa-solid fa-cloud-check"></i>
-                         <span className="hidden sm:inline">Đã Sync</span>
-                     </div>
-                 )}
-             </Link>
-
-             {/* Logout - Hide text on mobile */}
+            {/* Logout - Hide text on mobile */}
             <button
               onClick={logout}
               className="text-xs font-medium px-2 sm:px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-full transition border border-red-100 whitespace-nowrap"

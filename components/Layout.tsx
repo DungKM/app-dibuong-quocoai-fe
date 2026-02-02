@@ -49,9 +49,9 @@ export const Layout: React.FC = () => {
                         <Link to="/treatment" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
                             Danh sách bệnh nhân
                         </Link>
-                        <Link to="/rounds/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold">
+                        {/* <Link to="/rounds/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold">
                             Giám sát đi buồng
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
                 
@@ -72,35 +72,15 @@ export const Layout: React.FC = () => {
                         <Link to="/medication/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary">
                             Theo dõi cấp phát
                         </Link>
-                        <Link to="/compliance/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold border-t border-slate-100">
+                        {/* <Link to="/compliance/dashboard" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold border-t border-slate-100">
                             <i className="fa-solid fa-tower-observation mr-2 text-slate-400"></i>Dashboard Tuân thủ
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
             </nav>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-             {/* SYNC INDICATOR */}
-             <Link to="/sync/dashboard" className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 transition" title="Trạng thái đồng bộ HIS">
-                 {failedItems.length > 0 ? (
-                     <div className="flex items-center gap-1 text-red-600 animate-pulse font-bold text-xs">
-                         <i className="fa-solid fa-triangle-exclamation"></i>
-                         <span className="hidden sm:inline">{failedItems.length} Lỗi Sync</span>
-                     </div>
-                 ) : pendingItems.length > 0 ? (
-                     <div className="flex items-center gap-1 text-blue-600 text-xs">
-                         <i className="fa-solid fa-rotate fa-spin"></i>
-                         <span className="hidden sm:inline">Đang gửi...</span>
-                     </div>
-                 ) : (
-                     <div className="flex items-center gap-1 text-green-600 text-xs">
-                         <i className="fa-solid fa-cloud-check"></i>
-                         <span className="hidden sm:inline">Đã Sync</span>
-                     </div>
-                 )}
-             </Link>
-
              {/* Logout - Hide text on mobile */}
             <button
               onClick={logout}

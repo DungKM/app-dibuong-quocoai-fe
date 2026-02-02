@@ -15,13 +15,6 @@ const BedCard: React.FC<BedCardProps> = ({ bedCode, patient, onClick }) => {
     return "bg-blue-50 border-primary/30 ring-2 ring-primary/5";
   };
 
-  const calcAge = (dob?: string) => {
-    if (!dob) return "";
-    const year = Number(dob.split("-")[0]);
-    if (!Number.isFinite(year)) return "";
-    return String(new Date().getFullYear() - year);
-  };
-
   return (
     <div
       onClick={isOccupied ? onClick : undefined}
@@ -32,8 +25,8 @@ const BedCard: React.FC<BedCardProps> = ({ bedCode, patient, onClick }) => {
       <div className="flex justify-between items-start">
         <span
           className={`text-[10px] font-black px-2.5 py-1 rounded-xl shadow-sm ${isOccupied
-              ? "bg-white text-primary border border-primary/10"
-              : "bg-slate-50 text-slate-300"
+            ? "bg-white text-primary border border-primary/10"
+            : "bg-slate-50 text-slate-300"
             }`}
         >
           {bedCode}
@@ -54,9 +47,9 @@ const BedCard: React.FC<BedCardProps> = ({ bedCode, patient, onClick }) => {
           <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-0.5">
             <span className="text-primary font-mono tracking-tighter">{patient?.code}</span>
             <span>•</span>
-            <span className="uppercase">{patient?.gender}</span>
+            <span className="uppercase">{patient?.gioiTinh}</span>
             <span>•</span>
-            <span>{calcAge(patient?.dob)} tuổi</span>
+            <span>{patient?.tuoi} tuổi</span>
           </div>
         </div>
       ) : (

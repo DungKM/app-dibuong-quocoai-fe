@@ -21,7 +21,6 @@ const SurgeryList = lazyNamed(() => import('@/pages/SurgeryList'), 'SurgeryList'
 const SurgeryDetail = lazyNamed(() => import('@/pages/SurgeryDetail'), 'SurgeryDetail');
 const RoundDashboard = lazyNamed(() => import('@/pages/RoundDashboard'), 'RoundDashboard');
 const UserProfile = lazyNamed(() => import('@/pages/UserProfile'), 'UserProfile');
-const SyncDashboard = lazyNamed(() => import('@/pages/SyncDashboard'), 'SyncDashboard');
 const ComplianceDashboard = lazyNamed(() => import('@/pages/ComplianceDashboard'), 'ComplianceDashboard');
 
 
@@ -132,7 +131,6 @@ const App: React.FC = () => {
                     {/* Module: Rounds, Profile & System */}
                     <Route path="/rounds/dashboard" element={<RoundDashboard />} />
                     <Route path="/profile" element={<UserProfile />} />
-                    <Route path="/sync/dashboard" element={<SyncDashboard />} />
                   </Route>
                 </Route>
               </Routes>

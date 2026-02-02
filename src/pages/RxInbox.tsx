@@ -1,210 +1,229 @@
+import React, { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getTongHopLinh } from "@/services/dibuong.api";
+import type { TongHopLinhItem, TongHopLinhThuocItem } from "@/types/dibuong";
 
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/services/api';
-import { RxChangeType, RxInboxItem } from '@/types';
+type Row = {
+  key: string;
+  MaThuoc: string;
+  TenThuoc: string;
+  DonVi: string | null;
+  SoLuong: number;
+  IdBenhAn: string;
+};
+
+function sumByKey(items: TongHopLinhThuocItem[]) {
+  const map = new Map<string, Row>();
+
+  items.forEach((it) => {
+    const key = `${it.MaThuoc}__${it.TenThuoc}__${it.DonVi ?? ""}`;
+    const cur = map.get(key);
+
+    if (!cur) {
+      map.set(key, {
+        key,
+        MaThuoc: it.MaThuoc,
+        TenThuoc: it.TenThuoc,
+        DonVi: it.DonVi,
+        SoLuong: Number(it.SoLuong || 0),
+        IdBenhAn: it.IdBenhAn,
+      });
+    } else {
+      cur.SoLuong += Number(it.SoLuong || 0);
+    }
+  });
+
+  return Array.from(map.values());
+}
 
 export const RxInbox: React.FC = () => {
-    const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-    const [acks, setAcks] = useState<{ [key: string]: boolean }>({}); // Acknowledged change IDs
-    const queryClient = useQueryClient();
+  const ID_KHOA = "41CA5C91-F449-404F-B37B-00EFE98B8375";
 
-    // Queries
-    const { data: inboxItems, isLoading } = useQuery({ queryKey: ['rx-inbox'], queryFn: api.getRxInbox });
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [qPatient, setQPatient] = useState("");
+  const [qDrug, setQDrug] = useState("");
 
-    // Mutation
-    const applyMutation = useMutation({
-        mutationFn: (patientId: string) => api.applyRxUpdate(patientId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['rx-inbox'] });
-            setSelectedPatientId(null);
-            setAcks({});
-            alert('Đã cập nhật y lệnh thành công! Lịch dùng thuốc (MAR) đã được tạo lại.');
-        }
+  const { data, isLoading, error } = useQuery<TongHopLinhItem[]>({
+    queryKey: ["tonghoplinh", ID_KHOA],
+    queryFn: () => getTongHopLinh(ID_KHOA),
+  });
+
+  const patients = useMemo(() => {
+    const list = data ?? [];
+    const s = qPatient.trim().toLowerCase();
+    if (!s) return list;
+
+    return list.filter((p) => {
+      const hay = `${p.TenBenhNhan} ${p.MaBenhNhan}`.toLowerCase();
+      return hay.includes(s);
     });
+  }, [data, qPatient]);
 
-    /* Fix: Cast inboxItems to RxInboxItem[] */
-    const selectedItem = (inboxItems as RxInboxItem[])?.find(i => i.patientId === selectedPatientId);
+  const selectedItem = useMemo(() => {
+    const list = data ?? [];
+    return list.find((p) => p.IdBenhNhan === selectedPatientId) ?? null;
+  }, [data, selectedPatientId]);
 
-    // Toggle Acknowledge
-    const toggleAck = (changeId: string) => {
-        setAcks(prev => ({ ...prev, [changeId]: !prev[changeId] }));
-    };
+  const drugRows = useMemo(() => {
+    const items = selectedItem?.DsDonThuoc ?? [];
+    const rows = sumByKey(items);
 
-    // Check if all critical/stop/change items are acknowledged
-    const canApply = selectedItem?.changes.every(c => {
-        return acks[c.id];
+    const s = qDrug.trim().toLowerCase();
+    if (!s) return rows;
+
+    return rows.filter((r) => {
+      const hay = `${r.MaThuoc} ${r.TenThuoc} ${r.DonVi ?? ""}`.toLowerCase();
+      return hay.includes(s);
     });
+  }, [selectedItem, qDrug]);
 
-    const getChangeTypeLabel = (type: RxChangeType) => {
-        switch (type) {
-            case RxChangeType.ADD: return { label: 'MỚI', class: 'bg-green-100 text-green-700 border-green-200' };
-            case RxChangeType.UPDATE: return { label: 'THAY ĐỔI', class: 'bg-amber-100 text-amber-700 border-amber-200' };
-            case RxChangeType.STOP: return { label: 'NGƯNG', class: 'bg-red-100 text-red-700 border-red-200' };
-            default: return { label: 'KHÔNG ĐỔI', class: 'bg-slate-100 text-slate-500' };
-        }
-    };
+  // auto select người đầu tiên sau khi load (đỡ trống)
+  React.useEffect(() => {
+    if (!selectedPatientId && patients.length > 0) {
+      setSelectedPatientId(patients[0].IdBenhNhan);
+    }
+  }, [patients, selectedPatientId]);
 
-    return (
-        <div className="h-[calc(100vh-80px)] flex flex-col md:flex-row gap-6">
-            {/* Left Sidebar: Patient List */}
-            <div className="w-full md:w-1/3 lg:w-1/4 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 bg-slate-50">
-                    <h2 className="font-bold text-slate-800">Y lệnh chờ nhận</h2>
-                    <div className="flex justify-between items-center mt-1">
-                        <p className="text-xs text-slate-500">Từ HIS • Cần xác nhận</p>
-                        {/* Fix: Cast inboxItems to RxInboxItem[] */}
-                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">{(inboxItems as RxInboxItem[])?.length || 0}</span>
-                    </div>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                    {isLoading ? (
-                        <div className="p-4 text-center text-slate-400">Đang tải...</div>
-                    ) : (
-                        /* Fix: Cast inboxItems to RxInboxItem[] */
-                        (!inboxItems || (inboxItems as RxInboxItem[]).length === 0) ? (
-                            <div className="p-8 text-center text-slate-400 flex flex-col items-center">
-                                <i className="fa-solid fa-check-double text-4xl mb-3 text-green-200"></i>
-                                <p>Đã nhận hết y lệnh.</p>
-                            </div>
-                        ) : (
-                            /* Fix: Cast inboxItems to RxInboxItem[] */
-                            (inboxItems as RxInboxItem[]).map(item => (
-                                <div
-                                    key={item.patientId}
-                                    onClick={() => { setSelectedPatientId(item.patientId); setAcks({}); }}
-                                    className={`p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition relative ${selectedPatientId === item.patientId ? 'bg-blue-50 border-l-4 border-l-primary' : 'border-l-4 border-l-transparent'}`}
-                                >
-                                    <div className="font-bold text-slate-800">{item.patientName}</div>
-                                    <div className="text-xs text-slate-500 mb-2">{item.patientCode}</div>
+  return (
+    <div className="h-[calc(100vh-80px)] flex flex-col md:flex-row gap-6">
+      {/* Left: patient list */}
+      <div className="w-full md:w-1/3 lg:w-1/4 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="font-bold text-slate-800">Tổng hợp lĩnh</h2>
 
-                                    {item.alerts && item.alerts.length > 0 && (
-                                        <div className="mb-2 flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded w-fit">
-                                            <i className="fa-solid fa-triangle-exclamation"></i> Có cảnh báo
-                                        </div>
-                                    )}
-
-                                    <div className="flex justify-between items-center mt-1">
-                                        <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-mono">v{item.currentVersionId} <i className="fa-solid fa-arrow-right mx-0.5"></i> v{item.hisVersionId}</span>
-                                        <span className="text-[10px] text-slate-400">{new Date(item.hisTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                </div>
-                            ))
-                        )
-                    )}
-                </div>
-            </div>
-
-            {/* Right Content: Diff View */}
-            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
-                {!selectedItem ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                        <i className="fa-solid fa-file-prescription text-5xl mb-4 text-slate-200"></i>
-                        <p>Chọn bệnh nhân để xem thay đổi y lệnh</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                    {selectedItem.patientName}
-                                    <span className="bg-white text-slate-500 text-xs px-2 py-1 rounded border border-slate-200">{selectedItem.patientCode}</span>
-                                </h2>
-                                <p className="text-sm text-slate-500 mt-1">
-                                    Cập nhật lúc {new Date(selectedItem.hisTimestamp).toLocaleString('vi-VN')}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
-                            {/* ALERTS SECTION */}
-                            {selectedItem.alerts && selectedItem.alerts.length > 0 && (
-                                <div className="mb-6 space-y-2">
-                                    {selectedItem.alerts.map((alert, idx) => (
-                                        <div key={idx} className={`p-3 rounded-lg border flex items-start gap-3 ${alert.level === 'CRITICAL' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-                                            <i className={`fa-solid mt-0.5 text-lg ${alert.level === 'CRITICAL' ? 'fa-skull-crossbones' : 'fa-triangle-exclamation'}`}></i>
-                                            <div>
-                                                <div className="font-bold text-sm uppercase">{alert.level === 'CRITICAL' ? 'Cảnh báo nghiêm trọng' : 'Lưu ý lâm sàng'}</div>
-                                                <div className="text-sm">{alert.message}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* DIFF HEADER */}
-                            <div className="hidden md:grid grid-cols-12 gap-4 mb-2 px-4 text-xs font-bold text-slate-500 uppercase">
-
-                                <div className="col-span-3">Mã</div>
-                                <div className="col-span-3">Tên thuốc</div>
-                                <div className="col-span-3">Đơn vị</div>
-                                <div className="col-span-3">Số lượng</div>
-                            </div>
-
-                            <div className="space-y-4">
-                                {selectedItem.changes.map((change) => {
-                                    const badge = getChangeTypeLabel(change.type);
-                                    return (
-                                        <div key={change.id} className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all relative ${acks[change.id] ? 'border-green-400 ring-1 ring-green-100' : 'border-slate-200 hover:border-blue-300'}`}>
-                                            <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                                                {/* Status Badge */}
-                                                <div className="md:col-span-3">
-                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold border`}>
-                                                        {change.Ma}
-                                                    </span>
-                                                </div>
-
-                                                {/* Drug Name & Alerts */}
-                                                <div className="md:col-span-3">
-                                                    <div className="font-bold text-slate-900 text-lg md:text-base">{change.drugName}</div>
-                                                    {/* MAR CONFLICTS */}
-                                                    {change.conflicts && change.conflicts.length > 0 && (
-                                                        <div className="mt-2 text-amber-700 text-xs font-bold bg-amber-50 p-2 rounded border border-amber-100">
-                                                            <i className="fa-solid fa-triangle-exclamation mr-1"></i>
-                                                            {change.conflicts.join('; ')}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Old Data */}
-                                                <div className="md:col-span-3 bg-slate-50 p-3 rounded-lg border border-slate-100 md:bg-transparent md:border-0 md:p-0">
-                                                    <div className="md:hidden text-[10px] uppercase font-bold text-slate-400 mb-1">Hiện tại (Cũ)</div>
-                                                    {change.oldData ? (
-                                                        <div className={`text-sm ${change.type === RxChangeType.STOP ? 'line-through opacity-50 decoration-slate-400' : 'text-slate-600'}`}>
-                                                            <div className="font-medium">{change.oldData.dosage}</div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-sm text-slate-300 italic">-- Không có --</div>
-                                                    )}
-                                                </div>
-
-                                                {/* New Data */}
-                                                <div className="md:col-span-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 md:bg-transparent md:border-0 md:p-0">
-                                                    {change.newData ? (
-                                                        <div className="text-sm text-slate-800">
-                                                            {/* Highlight Diff Logic */}
-                                                            <div className={`font-bold ${change.oldData && change.oldData.dosage !== change.newData.dosage ? 'text-blue-700 bg-blue-100 w-fit px-1 rounded' : ''}`}>
-                                                                {change.newData.dosage}
-                                                            </div>
-                                                            <div className="mt-1 flex flex-wrap gap-2">
-                                                                <span className={change.oldData && change.oldData.frequency !== change.newData.frequency ? 'text-blue-700 bg-blue-100 px-1 rounded' : ''}>
-                                                                    {change.newData.frequency}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-sm text-red-600 font-bold italic">Ngưng dùng thuốc này</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
+          <div className="mt-3 flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
+            <i className="fa-solid fa-magnifying-glass text-slate-400 text-sm" />
+            <input
+              value={qPatient}
+              onChange={(e) => setQPatient(e.target.value)}
+              className="bg-transparent outline-none w-full text-sm font-bold text-slate-700 placeholder:text-slate-400"
+              placeholder="Tìm theo tên / mã BN..."
+            />
+            <span className="text-xs font-black text-slate-400">
+              {patients.length}
+            </span>
+          </div>
         </div>
-    );
+
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-4 text-center text-slate-400">Đang tải...</div>
+          ) : error ? (
+            <div className="p-4 text-red-600 font-bold">
+              Lỗi: {String((error as any)?.message || error)}
+            </div>
+          ) : patients.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 flex flex-col items-center">
+              <i className="fa-solid fa-inbox text-4xl mb-3 text-slate-200" />
+              <p>Không có dữ liệu.</p>
+            </div>
+          ) : (
+            patients.map((p) => (
+              <div
+                key={p.IdBenhNhan}
+                onClick={() => setSelectedPatientId(p.IdBenhNhan)}
+                className={[
+                  "p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition relative",
+                  selectedPatientId === p.IdBenhNhan
+                    ? "bg-blue-50 border-l-4 border-l-primary"
+                    : "border-l-4 border-l-transparent",
+                ].join(" ")}
+              >
+                <div className="font-bold text-slate-800">{p.TenBenhNhan}</div>
+                <div className="text-xs text-slate-500">{p.MaBenhNhan}</div>
+                <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {p.DsDonThuoc?.length ?? 0} dòng thuốc/vt
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Right: drug list */}
+      <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        {!selectedItem ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+            <i className="fa-solid fa-file-prescription text-5xl mb-4 text-slate-200" />
+            <p>Chọn bệnh nhân để xem danh sách lĩnh</p>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  {selectedItem.TenBenhNhan}
+                  <span className="bg-white text-slate-500 text-xs px-2 py-1 rounded border border-slate-200">
+                    {selectedItem.MaBenhNhan}
+                  </span>
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Danh sách thuốc/vật tư cần lĩnh (đã gộp trùng)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 w-full sm:w-[420px]">
+                <i className="fa-solid fa-magnifying-glass text-slate-400 text-sm" />
+                <input
+                  value={qDrug}
+                  onChange={(e) => setQDrug(e.target.value)}
+                  className="bg-transparent outline-none w-full text-sm font-bold text-slate-700 placeholder:text-slate-400"
+                  placeholder="Tìm theo mã / tên thuốc..."
+                />
+                <span className="text-xs font-black text-slate-400">
+                  {drugRows.length}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
+              <div className="hidden md:grid grid-cols-12 gap-4 mb-2 px-4 text-xs font-bold text-slate-500 uppercase">
+                <div className="col-span-3">Mã</div>
+                <div className="col-span-5">Tên thuốc / vật tư</div>
+                <div className="col-span-2">Đơn vị</div>
+                <div className="col-span-2 text-right">Số lượng</div>
+              </div>
+
+              {drugRows.length === 0 ? (
+                <div className="border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-400 font-bold bg-white">
+                  Không có thuốc/vật tư.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {drugRows.map((r) => (
+                    <div
+                      key={r.key}
+                      className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+                    >
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                        <div className="md:col-span-3">
+                          <span className="px-2 py-1 rounded text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-700 font-mono">
+                            {r.MaThuoc}
+                          </span>
+                        </div>
+
+                        <div className="md:col-span-5">
+                          <div className="font-bold text-slate-900 text-lg md:text-base">
+                            {r.TenThuoc}
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2 text-sm font-bold text-slate-700">
+                          {r.DonVi ?? "--"}
+                        </div>
+
+                        <div className="md:col-span-2 text-right text-lg md:text-base font-black text-slate-900">
+                          {r.SoLuong}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
