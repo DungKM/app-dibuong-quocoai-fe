@@ -3,7 +3,6 @@ import { ThongTinVaoVienItem } from "@/types/dibuong";
 import { getThongTinVaoVien } from "@/services/dibuong.api";
 
 export const ThongTinVaoVienCard = ({ idBenhAn }: { idBenhAn: string }) =>{
-  console.log(idBenhAn);
   const [item, setItem] = useState<ThongTinVaoVienItem | null>(null);
 
   useEffect(() => {

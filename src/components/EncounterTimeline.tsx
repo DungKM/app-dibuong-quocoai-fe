@@ -8,7 +8,6 @@ type Props = {
 };
 
 type NoteUI = {
-  
   id: string;
   time: string;
   author: string;

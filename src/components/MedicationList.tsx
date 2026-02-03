@@ -60,15 +60,11 @@ export const MedicationList: React.FC<Props> = ({ idPhieuKham }) => {
 
   const meds = useMemo(() => {
     const list = data ?? [];
-
-    // group theo MaDonThuoc nếu muốn; hiện UI của bạn chỉ cần list theo lần khám => dùng thẳng
     return list.map((it) => {
       const cd = parseCachDung(it.GhiChuLieuDung);
 
       const route = cd?.[0]?.CachDung ?? "--";
       const frequency = buildFrequencyFromGhiChu(cd) || "--";
-
-      // dose hiển thị: ưu tiên LieuDung, fallback "Số lượng + đơn vị"
       const dose =
         it.LieuDung?.trim()
           ? it.LieuDung.trim()

@@ -26,7 +26,6 @@ export const MedicationBedCard: React.FC<{
         if (current.used > 0) return "bg-blue-50 border-primary/20";
         return "bg-white border-slate-200 shadow-sm";
     };
-
     return (
         <div
             onClick={() => isOccupied && navigate(`/medication/${visit!.id}?shift=${activeShift}`)}
