@@ -40,13 +40,14 @@ export const MedicationList: React.FC = () => {
     wardData?.DSPhong?.forEach((phong: any) => {
       phong?.DsGiuong?.forEach((giuong: any) => {
         const benhAn = giuong?.DsBenhAn?.[0];
-        const idPhieuKham = benhAn?.IdPhieuKham || benhAn?.IdLanKham || benhAn?.VisitId; // tuỳ data thực tế
+        const idPhieuKham = benhAn?.IdPhieuKhamMoiNhat; 
         if (idPhieuKham) set.add(String(idPhieuKham));
       });
     });
     return Array.from(set);
   }, [wardData]);
 
+  // console.log(phieuKhamIds);
   /** 3) Fetch thuốc theo từng idPhieuKham */
   const {
     data: medsByVisit,
@@ -65,24 +66,23 @@ export const MedicationList: React.FC = () => {
       return Object.fromEntries(entries);
     },
   });
-
-  /** 4) Map sang UI wardLayout của bạn */
+// console.log(medsByVisit);
   const wardLayout = useMemo(() => {
     if (!wardData?.DSPhong) return [];
 
     return wardData.DSPhong.map((phong: any) => ({
-      room: phong.Ma, // ví dụ "P401"
+      room: phong.Ma, 
       beds: (phong.DsGiuong ?? []).map((giuong: any) => {
         const benhAn = giuong?.DsBenhAn?.[0];
         const bedCode = giuong?.MaGiuong ?? "--";
 
         if (!benhAn) return { code: bedCode, visit: undefined as MedVisitLite | undefined };
 
-        const idPhieuKham = benhAn?.IdPhieuKham || benhAn?.IdLanKham || benhAn?.VisitId;
+        const idPhieuKham = benhAn?.IdPhieuKhamMoiNhat;
         const meds = idPhieuKham ? medsByVisit?.[String(idPhieuKham)] ?? [] : [];
-
+        
         const shifts = buildAllShiftStats(meds, selectedDate);
-
+         
         const visit: MedVisitLite = {
           id: String(benhAn.IdBenhAn),
           patientName: benhAn.HoTenBenhNhan,
@@ -226,8 +226,6 @@ export const MedicationList: React.FC = () => {
           ))}
         </div>
       )}
-
-      {/* cảnh báo nếu không có idPhieuKham => không tính được thuốc */}
       {!isLoading && !error && phieuKhamIds.length === 0 ? (
         <div className="max-w-[1300px] mx-auto p-5 bg-amber-50 border border-amber-200 text-amber-800 font-bold rounded-3xl">
           ⚠️ Không tìm thấy <b>IdPhieuKham / IdLanKham / VisitId</b> trong DsBenhAn nên chưa thể gọi{" "}

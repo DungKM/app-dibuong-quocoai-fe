@@ -65,7 +65,6 @@ const RoomSection: React.FC<RoomSectionProps> = ({ room, searchTerm, onBedClick 
             patient={bed.patient}
             onClick={() => {
               // Guard giường trống
-              console.log(bed.patient);
               if (!bed.patient?.id) return;
 
               onBedClick({
