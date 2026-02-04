@@ -27,8 +27,14 @@ export const MedicationBedCard: React.FC<{
         return "bg-white border-slate-200 shadow-sm";
     };
     return (
-        <div
-            onClick={() => isOccupied && navigate(`/medication/${visit!.id}?shift=${activeShift}`)}
+        <div onClick={() => {
+            if (!visit) return;
+            const qs = new URLSearchParams({
+                maBenhNhan: visit.patientCode,
+                tenBenhNhan: visit.patientName,
+            }).toString();
+            navigate(`/medication/${visit.id}?${qs}`);
+        }}
             className={`relative h-44 rounded-[28px] border-2 transition-all duration-300 p-4 flex flex-col justify-between cursor-pointer hover:shadow-xl hover:-translate-y-1 ${getStatusClasses()} ${isClosed && isOccupied ? "opacity-90" : ""
                 }`}
         >

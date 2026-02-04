@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDsLanKham } from "@/services/dibuong.api";
 import type { LanKhamItem } from "@/types/dibuong";
@@ -7,6 +7,7 @@ type Props = {
   idBenhAn: string;
   selectedEncounterId: string | null;
   onChangeSelected: (id: string) => void;
+  mode?: "latest" | "all";
 };
 
 function formatDate(iso: string) {
@@ -24,6 +25,7 @@ export const EncounterList: React.FC<Props> = ({
   idBenhAn,
   selectedEncounterId,
   onChangeSelected,
+  mode = "all",
 }) => {
   const { data, isLoading, error } = useQuery<LanKhamItem[]>({
     queryKey: ["dslankham", idBenhAn],
@@ -31,6 +33,20 @@ export const EncounterList: React.FC<Props> = ({
     queryFn: () => getDsLanKham(idBenhAn),
   });
 
+  const latestEncounter = useMemo(() => {
+    if (!data || data.length === 0) return null;
+    return [...data].sort(
+      (a, b) => new Date(b.NgayThucKham).getTime() - new Date(a.NgayThucKham).getTime()
+    )[0];
+  }, [data]);
+
+  useEffect(() => {
+    if (mode === "latest" && !selectedEncounterId && latestEncounter) {
+      onChangeSelected(latestEncounter.Id);
+    }
+  }, [latestEncounter, mode, onChangeSelected, selectedEncounterId]);
+
+   console.log(idBenhAn);
   if (!idBenhAn) return null;
 
   if (isLoading) {
@@ -41,6 +57,64 @@ export const EncounterList: React.FC<Props> = ({
     return (
       <div className="mt-5 text-sm font-bold text-red-600">
         Không tải được danh sách lần khám
+      </div>
+    );
+  }
+
+  if (mode === "latest" && !latestEncounter) {
+    return <div className="mt-5 text-sm font-bold text-slate-400">Chưa có lần khám nào</div>;
+  }
+
+  if (mode === "latest") {
+    const e = latestEncounter!;
+    return (
+      <div className="mt-5 flex gap-3 pb-1">
+        <button
+          key={e.Id}
+          onClick={() => onChangeSelected(e.Id)}
+          className={[
+            "min-w-[260px] md:min-w-[300px] rounded-3xl border p-5 text-left transition-all",
+            selectedEncounterId === e.Id
+              ? "bg-blue-600 border-blue-600 text-white shadow-lg"
+              : "bg-white border-slate-200 hover:bg-slate-50",
+          ].join(" ")}
+        >
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-black">{e.Ma}</div>
+            <div className={selectedEncounterId === e.Id ? "text-white/80" : "text-slate-400"}>
+              <i className="fa-solid fa-circle text-[8px]" />
+            </div>
+          </div>
+
+          <div
+            className={[
+              "mt-2 text-xs font-bold",
+              selectedEncounterId === e.Id ? "text-white/90" : "text-slate-600",
+            ].join(" ")}
+          >
+            <i className="fa-regular fa-clock mr-2" />
+            {formatDate(e.NgayThucKham)}
+          </div>
+
+          <div
+            className={[
+              "mt-1 text-xs font-bold",
+              selectedEncounterId === e.Id ? "text-white/90" : "text-slate-600",
+            ].join(" ")}
+          >
+            <i className="fa-solid fa-user mr-2" />
+            {e.HoTen}
+          </div>
+
+          <div
+            className={[
+              "mt-2 text-[10px] font-black uppercase tracking-widest",
+              selectedEncounterId === e.Id ? "text-white/70" : "text-slate-400",
+            ].join(" ")}
+          >
+            {e.TenKhoaKham}
+          </div>
+        </button>
       </div>
     );
   }

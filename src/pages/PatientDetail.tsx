@@ -190,6 +190,7 @@ export const PatientDetail: React.FC = () => {
                         idBenhAn={IdBenhAn}
                         selectedEncounterId={selectedEncounterId}
                         onChangeSelected={setSelectedEncounterId}
+                        mode="all"
                     />
                 </div>
             )

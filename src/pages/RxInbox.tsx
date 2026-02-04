@@ -89,7 +89,7 @@ export const RxInbox: React.FC = () => {
       {/* Left: patient list */}
       <div className="w-full md:w-1/3 lg:w-1/4 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="font-bold text-slate-800">Tổng hợp lĩnh</h2>
+          <h2 className="font-bold text-slate-800"> Đơn thuốc chờ cấp</h2>
 
           <div className="mt-3 flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
             <i className="fa-solid fa-magnifying-glass text-slate-400 text-sm" />
@@ -132,9 +132,10 @@ export const RxInbox: React.FC = () => {
                 <div className="font-bold text-slate-800">{p.TenBenhNhan}</div>
                 <div className="text-xs text-slate-500">{p.MaBenhNhan}</div>
                 <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {p.DsDonThuoc?.length ?? 0} dòng thuốc/vt
+                  {p.DsDonThuoc?.length ?? 0} loại thuốc/vt
                 </div>
               </div>
+              // số lượng loại thuốc
             ))
           )}
         </div>
