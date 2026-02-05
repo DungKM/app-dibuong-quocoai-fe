@@ -1,39 +1,29 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
-import type { CachDungJson, DonThuocItem, SplitQty } from "@/types/dibuong";
+import type { DonThuocItem, SplitQty } from "@/types/dibuong";
 import { ShiftType } from "@/types/dibuong";
+
+interface MedSplitInfo {
+  splits: SplitQty;
+  status: string;
+  returnHistory?: Array<{ quantity: number; reason: string }>;
+}
 
 type Props = {
   idPhieuKham: string | null;
   shift: ShiftType;
-  splitMap: Record<string, SplitQty>;
+  splitMap: Record<string, MedSplitInfo>;
   filterTab: "PENDING" | "COMPLETED";
   splitLoading?: boolean;
   onPickDrug: (x: { idPhieuThuoc: string; ten: string; maxQty: number; lieuDung: string }) => void;
+  onAction: (data: { idPhieuThuoc: string; ten: string; qty: number; type: "CONFIRM" | "RETURN" }) => void;
 };
 
-function formatDate(iso?: string | null) {
-  if (!iso) return "--";
-  const d = new Date(iso);
-  return d.toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 export const MedicationOrders: React.FC<Props> = ({
-  idPhieuKham,
-  shift,
-  splitMap,
-  filterTab,
-  splitLoading,
-  onPickDrug,
+  idPhieuKham, shift, splitMap, filterTab, splitLoading, onPickDrug, onAction,
 }) => {
-  const { data, isLoading, error } = useQuery<DonThuocItem[]>({
+  const { data, isLoading } = useQuery<DonThuocItem[]>({
     queryKey: ["donthuoc", idPhieuKham],
     enabled: !!idPhieuKham,
     queryFn: () => getDonThuocByPhieuKham(idPhieuKham!),
@@ -45,125 +35,128 @@ export const MedicationOrders: React.FC<Props> = ({
 
     return raw.map((it) => {
       const idPhieuThuoc = String(it.IdPhieuThuoc);
-      const split = splitMap?.[idPhieuThuoc];
-      const hasBeenSplit = !!split;
+      const info = splitMap?.[idPhieuThuoc];
+      const qtyInShift = info?.splits ? Number(info.splits[key] ?? 0) : 0;
+      const totalReturned = info?.returnHistory?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+      const availableQty = Math.max(0, qtyInShift - totalReturned);
+      const hasBeenSplit = !!info;
+      const currentStatus = info?.status || "Chờ dùng thuốc";
 
       return {
         raw: it,
         idPhieuThuoc,
         hasBeenSplit,
-        qtyInShift: split ? Number(split[key] ?? 0) : 0,
-        isVisible: filterTab === "PENDING"
-          ? true
-          : (hasBeenSplit && split[key] > 0)
+        currentStatus,
+        qtyInShift,
+        availableQty,
+        totalReturned,
+        isVisible: filterTab === "PENDING" ? true : (hasBeenSplit && qtyInShift > 0)
       };
     }).filter(x => x.isVisible);
   }, [data, shift, splitMap, filterTab]);
 
-  if (!idPhieuKham) {
-    return (
-      <div className="bg-white p-10 rounded-3xl border border-slate-200 shadow-sm text-center text-slate-400 font-bold mx-4">
-        Chọn một lần khám để xem đơn thuốc.
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="bg-white p-10 rounded-3xl border border-slate-200 shadow-sm text-center text-slate-400 font-bold mx-4">
-        Đang tải đơn thuốc...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 p-6 rounded-3xl border border-red-100 text-red-700 font-bold mx-4">
-        Lỗi tải đơn thuốc: {String((error as any)?.message || error)}
-      </div>
-    );
-  }
+  if (!idPhieuKham || isLoading) return null;
 
   return (
-    <div className="space-y-4 mx-4">
-      {splitLoading && <div className="text-[10px] font-bold text-primary animate-pulse px-2">Đang cập nhật dữ liệu chia ca...</div>}
-
-      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, hasBeenSplit }) => (
-        <div
-          key={idPhieuThuoc}
-          className={`rounded-3xl border p-5 transition-all duration-300 shadow-sm ${hasBeenSplit && filterTab === "PENDING"
-              ? "bg-green-50/50 border-green-200"
-              : "bg-white border-slate-200"
-            }`}
-        >
-          <div className="flex justify-between items-start gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="text-lg font-black text-slate-900 leading-tight">{it.Ten}</div>
-                {hasBeenSplit && filterTab === "PENDING" && (
-                  <span className="bg-green-500 text-white text-[8px] px-2 py-0.5 rounded-full uppercase font-black tracking-tighter">
-                    <i className="fa-solid fa-check mr-1"></i> Đã chia
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-1 text-[11px] font-bold text-slate-400">
-                BS. {it.TenBacSiKeThuoc || "--"} • {formatDate(it.NgayKeThuoc)}
-              </div>
-
-              <div className="mt-3 space-y-1">
-                <div className="text-xs font-bold text-slate-600 flex items-center gap-2">
-                  <i className="fa-solid fa-box-archive text-slate-300 w-4"></i>
-                  Tổng đơn: <span className="text-slate-900">{it.SoLuong} {it.DonVi}</span>
+    <div className="space-y-4 mx-4 pb-10">
+      {splitLoading && <div className="text-[10px] font-black text-primary animate-pulse px-4 uppercase tracking-widest">Đang đồng bộ dữ liệu...</div>}
+       {list.length === 0 && (
+          <div className="text-center text-slate-400 italic text-sm font-black uppercase tracking-widest py-10">
+            {filterTab === "PENDING" ? "Chưa có thuốc nào được chia ca" : "Không có thuốc nào đã được chia ca"}
+          </div>
+        )
+       }
+      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, availableQty, totalReturned, hasBeenSplit, currentStatus }) => {
+        const canAction = availableQty > 0 && currentStatus !== "Đã dùng thuốc";
+        return (
+          <div key={idPhieuThuoc} className={`relative rounded-[32px] border transition-all duration-300 ${
+            hasBeenSplit && filterTab === "PENDING" ? "bg-[#f8fdfb] border-[#e2f3ee]" : "bg-white border-slate-100 shadow-sm"
+          }`}>
+            <div className="p-6">
+              {/* Header: Tên và Nút chức năng */}
+              <div className="flex justify-between items-start gap-4 mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl font-black text-[#1a202c] leading-tight">{it.Ten}</h3>
+                    {filterTab === "COMPLETED" && (
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${
+                        currentStatus === "Đã dùng thuốc" ? "bg-emerald-500 text-white" :
+                        availableQty === 0 ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
+                      }`}>
+                        {availableQty === 0 && currentStatus !== "Đã dùng thuốc" ? "Đã trả hết" : currentStatus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-slate-400 font-bold text-[11px]">
+                     <i className="fa-solid fa-layer-group opacity-40"></i>
+                     <span>Tổng đơn: {it.SoLuong} {it.DonVi}</span>
+                  </div>
                 </div>
 
-                {it.LieuDung && (
-                  <div className="text-xs font-bold text-amber-600 flex items-start gap-2">
-                    <i className="fa-solid fa-comment-medical text-amber-300 w-4 mt-0.5"></i>
-                    <span>HD: {it.LieuDung}</span>
-                  </div>
+                {/* Nút Sửa/Chia ca (Theo bố cục ảnh image_cfe33b.png) */}
+                {filterTab === "PENDING" && (
+                  <button
+                    onClick={() => onPickDrug({ idPhieuThuoc: it.IdPhieuThuoc, ten: it.Ten, maxQty: it.SoLuong ?? 0, lieuDung: it.LieuDung ?? "" })}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-1 h-16 w-24 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                      hasBeenSplit 
+                      ? "bg-white border border-slate-200 text-slate-500 shadow-sm" 
+                      : "bg-[#0f172a] text-white shadow-xl shadow-slate-200"
+                    }`}
+                  >
+                    <i className={`fa-solid ${hasBeenSplit ? 'fa-pen-to-square' : 'fa-plus-circle'} text-lg`}></i>
+                    {hasBeenSplit ? "SỬA CA" : "CHIA NGAY"}
+                  </button>
                 )}
               </div>
+
+              {/* Hướng dẫn liều dùng nổi bật */}
+              <div className="bg-[#fff9eb] border border-[#ffecd1] rounded-2xl p-4 flex gap-3 items-start mb-2">
+                <div className="w-8 h-8 rounded-xl bg-[#f59e0b] flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <i className="fa-solid fa-hand-holding-medical"></i>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black text-[#b45309] uppercase tracking-widest mb-0.5">Hướng dẫn liều dùng</p>
+                  <p className="text-sm font-bold text-[#78350f] leading-tight">{it.LieuDung || "Theo chỉ dẫn của bác sĩ"}</p>
+                </div>
+              </div>
+
+              {/* Thông tin số lượng & Nút hành động (Tab Đã chia) */}
               {filterTab === "COMPLETED" && (
-                <div className="mt-3 inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-black shadow-sm">
-                  <i className="fa-solid fa-clock mr-2"></i>
-                  Ca này uống: {qtyInShift} {it.DonVi}
+                <div className="mt-4 pt-4 border-t border-slate-50">
+                   <div className="flex gap-2 flex-wrap mb-4">
+                      <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase border border-slate-200/50">Ca này: {qtyInShift}</span>
+                      {totalReturned > 0 && <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase border border-rose-100">Đã trả: {totalReturned}</span>}
+                      <span className="px-3 py-1 bg-primary text-white rounded-xl text-[10px] font-black uppercase shadow-sm">Còn lại: {availableQty} {it.DonVi}</span>
+                   </div>
+
+                   <div className="flex gap-2">
+                    {canAction ? (
+                      <>
+                        <button
+                          onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: availableQty, type: "CONFIRM" })}
+                          className="flex-[2] bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-100 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          <i className="fa-solid fa-check-circle"></i> Dùng {availableQty} {it.DonVi}
+                        </button>
+                        <button
+                          onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: availableQty, type: "RETURN" })}
+                          className="flex-1 bg-rose-50 text-rose-600 py-4 rounded-2xl font-black text-xs uppercase border border-rose-100 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          <i className="fa-solid fa-reply"></i> Trả
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full py-4 bg-slate-50 text-slate-400 text-center text-[10px] font-black uppercase rounded-2xl border border-slate-100 italic tracking-[0.2em]">
+                        {availableQty === 0 && currentStatus !== "Đã dùng thuốc" ? "ĐÃ XỬ LÝ TRẢ HẾT" : `TRẠNG THÁI: ${currentStatus}`}
+                      </div>
+                    )}
+                   </div>
                 </div>
               )}
             </div>
-
-            <button
-              onClick={() => onPickDrug?.({
-                idPhieuThuoc: it.IdPhieuThuoc,
-                ten: it.Ten,
-                maxQty: it.SoLuong ?? 0,
-                lieuDung: it.LieuDung ?? ""
-              })}
-              className={`shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${hasBeenSplit
-                  ? "bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
-                  : "bg-slate-900 text-white hover:bg-black shadow-md shadow-slate-200"
-                }`}
-            >
-              <i className={`fa-solid ${hasBeenSplit ? 'fa-pen-to-square' : 'fa-plus'} mr-1`}></i>
-              {hasBeenSplit ? "Sửa lại" : "Chia ngay"}
-            </button>
           </div>
-        </div>
-      ))}
-
-      {list.length === 0 && (
-        <div className="p-16 text-center border-2 border-dashed border-slate-200 rounded-[40px] bg-slate-50/50">
-          <div className="text-slate-400 font-black text-sm uppercase tracking-widest">
-            {filterTab === "PENDING"
-              ? "🎉 Hoàn thành chia thuốc!"
-              : `Trống trong ca ${shift === "MORNING" ? "Sáng" : shift === "NOON" ? "Trưa" : shift === "AFTERNOON" ? "Chiều" : "Tối"}`
-            }
-          </div>
-          <div className="text-slate-300 text-xs mt-1 font-bold">
-            {filterTab === "PENDING" ? "Tất cả thuốc đã được xử lý xong." : "Không có thuốc nào được chỉ định dùng trong ca này."}
-          </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 };
