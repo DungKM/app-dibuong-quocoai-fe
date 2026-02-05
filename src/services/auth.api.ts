@@ -1,24 +1,22 @@
 import { env } from "@/config/env";
 import type { LoginResponse, Role } from "@/types/auth";
 
-const ACCESS_TOKEN_KEY = "accessToken";
-const REFRESH_TOKEN_KEY = "refreshToken";
-const ROLE_KEY = "role";
+const KEYS = {
+  ACCESS: "accessToken",
+  REFRESH: "refreshToken",
+  ROLE: "role",
+};
 
 export const authStorage = {
-  set: (accessToken: string, refreshToken: string, role: Role) => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    localStorage.setItem(ROLE_KEY, role);
+  set: (access: string, refresh: string, role: Role) => {
+    localStorage.setItem(KEYS.ACCESS, access);
+    localStorage.setItem(KEYS.REFRESH, refresh);
+    localStorage.setItem(KEYS.ROLE, role);
   },
-  clear: () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(ROLE_KEY);
-  },
-  getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
-  getRefreshToken: () => localStorage.getItem(REFRESH_TOKEN_KEY),
-  getRole: () => (localStorage.getItem(ROLE_KEY) as Role | null),
+  clear: () => Object.values(KEYS).forEach(k => localStorage.removeItem(k)),
+  getAccessToken: () => localStorage.getItem(KEYS.ACCESS),
+  getRefreshToken: () => localStorage.getItem(KEYS.REFRESH),
+  getRole: () => localStorage.getItem(KEYS.ROLE) as Role | null,
 };
 
 export const authApi = {
@@ -29,26 +27,33 @@ export const authApi = {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = (await res.json().catch(() => null)) as any;
-    if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Login failed" }));
+      throw new Error(error.message);
+    }
 
-    const result = data as LoginResponse;
-    authStorage.set(result.accessToken, result.refreshToken, result.role);
-    return result;
+    const data: LoginResponse = await res.json();
+    authStorage.set(data.accessToken, data.refreshToken, data.role);
+    return data;
   },
 
-  logout: async () => {
+  refresh: async () => {
     const refreshToken = authStorage.getRefreshToken();
-    try {
-      if (refreshToken) {
-        await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
-    } finally {
+    if (!refreshToken) throw new Error("No refresh token");
+
+    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/refresh-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) {
       authStorage.clear();
+      throw new Error("Session expired");
     }
+
+    const data = await res.json();
+    authStorage.set(data.accessToken, data.refreshToken || refreshToken, data.role);
+    return data.accessToken;
   },
 };

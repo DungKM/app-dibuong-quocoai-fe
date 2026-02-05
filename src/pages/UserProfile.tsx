@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
-import { api } from '@/services/api';
 import avatar from "@/assets/avatar.jpg";
 interface ProfileForm {
     name: string;
@@ -21,18 +20,7 @@ export const UserProfile: React.FC = () => {
         }
     });
 
-    const updateProfileMutation = useMutation({
-        mutationFn: (data: ProfileForm) => api.updateProfile(user!.id, data),
-        onSuccess: (updatedUser) => {
-            updateUser(updatedUser);
-            setSuccessMsg('Cập nhật thông tin thành công!');
-            setTimeout(() => setSuccessMsg(''), 3000);
-        },
-        onError: () => {
-            alert('Có lỗi xảy ra khi cập nhật.');
-        }
-    });
-
+  
     if (!user) return null;
 
     return (
@@ -61,7 +49,7 @@ export const UserProfile: React.FC = () => {
                          </div>
                      </div>
 
-                     <form onSubmit={handleSubmit(d => updateProfileMutation.mutate(d))} className="flex-1 space-y-5">
+                     <form  className="flex-1 space-y-5">
                          <div>
                              <label className="block text-sm font-bold text-slate-700 mb-1">Họ và tên</label>
                              <input 
@@ -86,10 +74,9 @@ export const UserProfile: React.FC = () => {
                          <div className="pt-4 flex justify-end">
                              <button 
                                 type="submit" 
-                                disabled={updateProfileMutation.isPending}
                                 className="bg-primary text-white px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-primary/30 hover:bg-sky-600 transition disabled:opacity-70 flex items-center gap-2"
                              >
-                                 {updateProfileMutation.isPending ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
+                              <i className="fa-solid fa-circle-notch fa-spin"></i>
                                  Lưu thay đổi
                              </button>
                          </div>

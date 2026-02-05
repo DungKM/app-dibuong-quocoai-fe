@@ -1,46 +1,51 @@
 import { env } from "@/config/env";
-import { authStorage } from "@/services/auth.api";
+import { authStorage, authApi } from "./auth.api";
 
 type ReqOpts = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
-  query?: Record<string, any>;
-  body?: any;
-  headers?: Record<string, string>;
+    method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+    query?: Record<string, any>;
+    body?: any;
+    headers?: Record<string, string>;
 };
 
-function withQuery(url: string, query?: Record<string, any>) {
-  if (!query) return url;
-  const sp = new URLSearchParams();
-  Object.entries(query).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    sp.set(k, String(v));
-  });
-  const qs = sp.toString();
-  return qs ? `${url}?${qs}` : url;
-}
+export async function requestNode<T>(path: string, opts: ReqOpts = {}): Promise<T> {
+    const base = env.API_BACKEND_AUTH_NODE_URL;
+    const url = new URL(path.startsWith("http") ? path : `${base}${path}`);
+    
+    if (opts.query) {
+        Object.entries(opts.query).forEach(([k, v]) => {
+            if (v != null) url.searchParams.set(k, String(v));
+        });
+    }
 
-export async function requestNode<T>(path: string, opts: ReqOpts = {}) {
-  const base = env.API_BACKEND_AUTH_NODE_URL; // ✅ http://localhost:5000 hoặc env
-  const fullUrl = path.startsWith("http") ? path : `${base}${path}`;
-  const url = withQuery(fullUrl, opts.query);
+    const getHeaders = () => ({
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authStorage.getAccessToken()}`,
+        ...(opts.headers ?? {}),
+    });
 
-  const token = authStorage.getAccessToken(); // ✅ dùng đúng cái bạn đã có
+    let res = await fetch(url.toString(), {
+        method: opts.method ?? "GET",
+        headers: getHeaders(),
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
 
-  const res = await fetch(url, {
-    method: opts.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opts.headers ?? {}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+    if (res.status === 401) {
+        try {
+            const newToken = await authApi.refresh();
+            res = await fetch(url.toString(), {
+                method: opts.method ?? "GET",
+                headers: { ...getHeaders(), Authorization: `Bearer ${newToken}` },
+                body: opts.body ? JSON.stringify(opts.body) : undefined,
+            });
+        } catch {
+            window.location.href = "/login";
+        }
+    }
 
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
-  }
-
-  return data as T;
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<T>;
 }

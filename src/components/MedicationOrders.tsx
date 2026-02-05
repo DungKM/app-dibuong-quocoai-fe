@@ -1,16 +1,16 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
-import type { CachDungJson, DonThuocItem } from "@/types/dibuong";
+import type { CachDungJson, DonThuocItem, SplitQty } from "@/types/dibuong";
 import { ShiftType } from "@/types/dibuong";
-import { SplitQty, ZERO } from "@/services/medSplit.api";
 
 type Props = {
   idPhieuKham: string | null;
   shift: ShiftType;
   splitMap: Record<string, SplitQty>;
+  filterTab: "PENDING" | "COMPLETED";
   splitLoading?: boolean;
-  onPickDrug: (x: { idPhieuThuoc: string; ten: string }) => void;
+  onPickDrug: (x: { idPhieuThuoc: string; ten: string; maxQty: number; lieuDung: string }) => void;
 };
 
 function formatDate(iso?: string | null) {
@@ -23,38 +23,6 @@ function formatDate(iso?: string | null) {
     month: "2-digit",
     year: "numeric",
   });
-}
-
-function toneByStatus(status?: string | null) {
-  if (status === "Đã dùng thuốc") return "bg-green-50 border-green-100 text-green-700";
-  if (status === "Đã hủy thuốc" || status === "Đã huỷ thuốc") return "bg-slate-50 border-slate-200 text-slate-500";
-  if (status === "Chờ dùng thuốc") return "bg-blue-50 border-blue-100 text-blue-700";
-  return "bg-amber-50 border-amber-100 text-amber-700";
-}
-
-function parseCachDung(ghiChuJson?: string | null): CachDungJson[] {
-  if (!ghiChuJson) return [];
-  try {
-    const x = JSON.parse(ghiChuJson);
-    return Array.isArray(x) ? x : [];
-  } catch {
-    return [];
-  }
-}
-
-function mapShiftKey(shift: ShiftType) {
-  return shift as keyof SplitQty;
-}
-
-function fallbackHasShiftFromGhiChu(ghiChuJson: string | null | undefined, shift: ShiftType) {
-  const arr = parseCachDung(ghiChuJson);
-  const x = arr?.[0];
-  if (!x) return false;
-  if (shift === ShiftType.MORNING) return !!x.ThoiGianSang;
-  if (shift === ShiftType.NOON) return !!x.ThoiGianTrua;
-  if (shift === ShiftType.AFTERNOON) return !!x.ThoiGianChieu;
-  if (shift === ShiftType.NIGHT) return !!x.ThoiGianToi;
-  return false;
 }
 
 export const MedicationOrders: React.FC<Props> = ({
@@ -75,30 +43,21 @@ export const MedicationOrders: React.FC<Props> = ({
     const raw = data ?? [];
     const key = shift as keyof SplitQty;
 
-    return raw
-      .map((it) => {
-        const idPhieuThuoc = String(it.IdPhieuThuoc);
-        const split = splitMap?.[idPhieuThuoc];
-        const hasBeenSplit = !!split;
+    return raw.map((it) => {
+      const idPhieuThuoc = String(it.IdPhieuThuoc);
+      const split = splitMap?.[idPhieuThuoc];
+      const hasBeenSplit = !!split;
 
-        return {
-          raw: it,
-          idPhieuThuoc,
-          hasBeenSplit,
-          qtyInShift: split ? Number(split[key] ?? 0) : 0,
-          // Tab COMPLETED: chỉ hiện nếu thuốc đó có số lượng > 0 trong ca đang chọn
-          isVisibleInShift: split ? split[key] > 0 : false
-        };
-      })
-      .filter((x) => {
-        if (filterTab === "PENDING") {
-          // Tab chưa chia: Hiện những thuốc chưa có dữ liệu trong splitMap
-          return !x.hasBeenSplit;
-        } else {
-          // Tab đã chia: Hiện những thuốc đã chia VÀ có lịch uống trong ca (Sáng/Trưa...) đang chọn
-          return x.hasBeenSplit && x.isVisibleInShift;
-        }
-      });
+      return {
+        raw: it,
+        idPhieuThuoc,
+        hasBeenSplit,
+        qtyInShift: split ? Number(split[key] ?? 0) : 0,
+        isVisible: filterTab === "PENDING"
+          ? true
+          : (hasBeenSplit && split[key] > 0)
+      };
+    }).filter(x => x.isVisible);
   }, [data, shift, splitMap, filterTab]);
 
   if (!idPhieuKham) {
@@ -127,16 +86,47 @@ export const MedicationOrders: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 mx-4">
-      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, hasBeenSplit }) => (
-        <div key={idPhieuThuoc} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="text-lg font-black text-slate-900">{it.Ten}</div>
-              <div className="text-xs font-bold text-slate-400 mt-1">Tổng đơn: {it.SoLuong} {it.DonVi}</div>
+      {splitLoading && <div className="text-[10px] font-bold text-primary animate-pulse px-2">Đang cập nhật dữ liệu chia ca...</div>}
 
-              {/* Hiển thị số lượng riêng cho ca nếu đã chia */}
+      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, hasBeenSplit }) => (
+        <div
+          key={idPhieuThuoc}
+          className={`rounded-3xl border p-5 transition-all duration-300 shadow-sm ${hasBeenSplit && filterTab === "PENDING"
+              ? "bg-green-50/50 border-green-200"
+              : "bg-white border-slate-200"
+            }`}
+        >
+          <div className="flex justify-between items-start gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="text-lg font-black text-slate-900 leading-tight">{it.Ten}</div>
+                {hasBeenSplit && filterTab === "PENDING" && (
+                  <span className="bg-green-500 text-white text-[8px] px-2 py-0.5 rounded-full uppercase font-black tracking-tighter">
+                    <i className="fa-solid fa-check mr-1"></i> Đã chia
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-1 text-[11px] font-bold text-slate-400">
+                BS. {it.TenBacSiKeThuoc || "--"} • {formatDate(it.NgayKeThuoc)}
+              </div>
+
+              <div className="mt-3 space-y-1">
+                <div className="text-xs font-bold text-slate-600 flex items-center gap-2">
+                  <i className="fa-solid fa-box-archive text-slate-300 w-4"></i>
+                  Tổng đơn: <span className="text-slate-900">{it.SoLuong} {it.DonVi}</span>
+                </div>
+
+                {it.LieuDung && (
+                  <div className="text-xs font-bold text-amber-600 flex items-start gap-2">
+                    <i className="fa-solid fa-comment-medical text-amber-300 w-4 mt-0.5"></i>
+                    <span>HD: {it.LieuDung}</span>
+                  </div>
+                )}
+              </div>
               {filterTab === "COMPLETED" && (
-                <div className="mt-3 inline-flex items-center px-3 py-1 bg-primary/10 text-primary rounded-xl text-xs font-black">
+                <div className="mt-3 inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-black shadow-sm">
+                  <i className="fa-solid fa-clock mr-2"></i>
                   Ca này uống: {qtyInShift} {it.DonVi}
                 </div>
               )}
@@ -149,9 +139,12 @@ export const MedicationOrders: React.FC<Props> = ({
                 maxQty: it.SoLuong ?? 0,
                 lieuDung: it.LieuDung ?? ""
               })}
-              className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition ${hasBeenSplit ? "bg-slate-100 text-slate-600" : "bg-slate-900 text-white"
+              className={`shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${hasBeenSplit
+                  ? "bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
+                  : "bg-slate-900 text-white hover:bg-black shadow-md shadow-slate-200"
                 }`}
             >
+              <i className={`fa-solid ${hasBeenSplit ? 'fa-pen-to-square' : 'fa-plus'} mr-1`}></i>
               {hasBeenSplit ? "Sửa lại" : "Chia ngay"}
             </button>
           </div>
@@ -159,9 +152,15 @@ export const MedicationOrders: React.FC<Props> = ({
       ))}
 
       {list.length === 0 && (
-        <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-[32px]">
-          <div className="text-slate-300 font-bold text-sm">
-            {filterTab === "PENDING" ? "🎉 Tuyệt vời, không còn thuốc nào chưa chia!" : `Hết thuốc trong ca ${shift === "MORNING" ? "Sáng" : shift}...`}
+        <div className="p-16 text-center border-2 border-dashed border-slate-200 rounded-[40px] bg-slate-50/50">
+          <div className="text-slate-400 font-black text-sm uppercase tracking-widest">
+            {filterTab === "PENDING"
+              ? "🎉 Hoàn thành chia thuốc!"
+              : `Trống trong ca ${shift === "MORNING" ? "Sáng" : shift === "NOON" ? "Trưa" : shift === "AFTERNOON" ? "Chiều" : "Tối"}`
+            }
+          </div>
+          <div className="text-slate-300 text-xs mt-1 font-bold">
+            {filterTab === "PENDING" ? "Tất cả thuốc đã được xử lý xong." : "Không có thuốc nào được chỉ định dùng trong ca này."}
           </div>
         </div>
       )}
