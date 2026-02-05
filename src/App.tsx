@@ -125,7 +125,7 @@ const App: React.FC = () => {
                     <Route path="/medication" element={<MedicationList />} />
                     <Route path="/medication/dashboard" element={<MedicationDashboard />} />
                     <Route path="/medication/ward-stock" element={<WardStock />} />
-                    <Route path="/medication/:visitId" element={<MedicationDetail />} />
+                    <Route path="/medication/:id" element={<MedicationDetail />} />
                     <Route path="/compliance/dashboard" element={<ComplianceDashboard />} />
 
                     {/* Module: Rounds, Profile & System */}
