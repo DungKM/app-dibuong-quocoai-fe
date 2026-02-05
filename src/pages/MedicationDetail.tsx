@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { EncounterList } from "@/components/EncounterList";
@@ -6,7 +6,7 @@ import { ShiftType, SplitQty } from "@/types/dibuong";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MedicationOrders } from "@/components/MedicationOrders";
-import { getMedSplitsByEncounter, saveMedSplitOne } from "@/services/medSplit.api";
+import { confirmMedUsage, getMedSplitsByEncounter, returnMedication, saveMedSplitOne } from "@/services/medSplit.api";
 type TabType = "PENDING" | "COMPLETED";
 
 const ZERO: SplitQty = { MORNING: 0, NOON: 0, AFTERNOON: 0, NIGHT: 0 };
@@ -78,7 +78,50 @@ export const MedicationDetail: React.FC = () => {
             qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
         },
     });
+    // Thêm các state quản lý Action
+    const [actionDrug, setActionDrug] = useState<{
+        idPhieuThuoc: string;
+        ten: string;
+        qty: number;
+        type: "CONFIRM" | "RETURN";
+    } | null>(null);
 
+    const [returnReason, setReturnReason] = useState("");
+    const [returnQty, setReturnQty] = useState(0);
+
+    // Mutation Xác nhận dùng thuốc
+    const confirmMutation = useMutation({
+        mutationFn: (idPhieuThuoc: string) =>
+            confirmMedUsage(selectedEncounterId!, idPhieuThuoc),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
+            setActionDrug(null);
+        }
+    });
+
+    // Mutation Trả thuốc
+    const returnMutation = useMutation({
+        mutationFn: (data: { idPhieuThuoc: string; quantity: number; reason: string }) =>
+            returnMedication(selectedEncounterId!, data.idPhieuThuoc, {
+                quantity: data.quantity,
+                reason: data.reason
+            }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
+            setActionDrug(null);
+            setReturnReason("");
+        }
+    });
+
+    const totalSplits = useMemo(() => {
+        if (!selectedDrug) return 0;
+        return (
+            Number(selectedDrug.splits.MORNING || 0) +
+            Number(selectedDrug.splits.NOON || 0) +
+            Number(selectedDrug.splits.AFTERNOON || 0) +
+            Number(selectedDrug.splits.NIGHT || 0)
+        );
+    }, [selectedDrug?.splits]);
     if (!currentUser) return null;
     return (
         <div className="pb-24 max-w-[1000px] mx-auto space-y-6">
@@ -157,17 +200,33 @@ export const MedicationDetail: React.FC = () => {
                         { id: ShiftType.NOON, label: "Trưa", icon: "fa-cloud-sun" },
                         { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
                         { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
-                    ].map((s) => (
-                        <button
-                            key={s.id}
-                            onClick={() => setActiveShift(s.id)}
-                            className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 ${
-                                activeShift === s.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
-                            }`}
-                        >
-                            <i className={`fa-solid ${s.icon}`}></i> {s.label}
-                        </button>
-                    ))}
+                    ].map((s) => {
+                        // ✅ Kiểm tra xem ca này có thuốc nào không
+                        const hasDataInShift = Object.values(splitData?.splits ?? {}).some(
+                            (m) => Number(m.splits[s.id as keyof SplitQty] ?? 0) > 0
+                        );
+
+                        return (
+                            <button
+                                key={s.id}
+                                onClick={() => setActiveShift(s.id)}
+                                className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${activeShift === s.id
+                                        ? "bg-white text-primary shadow-sm"
+                                        : "text-slate-400 hover:bg-white/40"
+                                    }`}
+                            >
+                                {/* Chấm xanh nhỏ báo hiệu có thuốc */}
+                                {hasDataInShift && (
+                                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm"></span>
+                                )}
+
+                                <i className={`fa-solid ${s.icon} ${hasDataInShift && activeShift !== s.id ? "text-slate-600" : ""}`}></i>
+                                <span className={hasDataInShift && activeShift !== s.id ? "text-slate-600" : ""}>
+                                    {s.label}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
@@ -178,13 +237,26 @@ export const MedicationDetail: React.FC = () => {
                 splitLoading={splitLoading}
                 filterTab={activeTab}
                 onPickDrug={(drug) => {
+                    const currentInfo = splitData?.splits?.[drug.idPhieuThuoc]?.splits;
                     setSelectedDrug({
                         idPhieuThuoc: drug.idPhieuThuoc,
                         ten: drug.ten,
                         maxQty: drug.maxQty,
                         lieuDung: drug.lieuDung,
-                        splits: { ...(splitData?.splits?.[drug.idPhieuThuoc] ?? ZERO) },
+                        splits: {
+                            MORNING: Number(currentInfo?.MORNING ?? 0),
+                            NOON: Number(currentInfo?.NOON ?? 0),
+                            AFTERNOON: Number(currentInfo?.AFTERNOON ?? 0),
+                            NIGHT: Number(currentInfo?.NIGHT ?? 0),
+                        },
                     });
+                }}
+                onAction={(data) => {
+                    if (data.type === "RETURN") {
+                        setReturnQty(data.qty);
+                        setReturnReason("");
+                    }
+                    setActionDrug(data);
                 }}
             />
 
@@ -300,6 +372,102 @@ export const MedicationDetail: React.FC = () => {
                     >
                         Mô phỏng quét: {maBenhNhan || "--"}
                     </button>
+                </div>
+            )}
+            {actionDrug && (
+                <div className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl animate-in zoom-in duration-200">
+                        <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center text-3xl mb-6 ${actionDrug.type === "CONFIRM" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                            }`}>
+                            <i className={`fa-solid ${actionDrug.type === "CONFIRM" ? "fa-hand-holding-medical" : "fa-undo"}`}></i>
+                        </div>
+
+                        <h3 className="text-xl font-black text-slate-900 text-center mb-2">
+                            {actionDrug.type === "CONFIRM" ? "Xác nhận dùng thuốc" : "Yêu cầu trả thuốc"}
+                        </h3>
+
+                        <div className="bg-slate-50 rounded-2xl p-4 mb-6">
+                            <div className="text-sm font-bold text-slate-900 text-center">{actionDrug.ten}</div>
+                            <div className="text-[10px] font-black text-primary mt-1 uppercase text-center">
+                                Số lượng trong ca: {actionDrug.qty}
+                            </div>
+                        </div>
+
+                        {actionDrug.type === "RETURN" && (
+                            <div className="space-y-4 mb-8">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Số lượng thực trả</label>
+                                    <input
+                                        type="number"
+                                        max={actionDrug.qty}
+                                        value={returnQty}
+                                        onChange={(e) => setReturnQty(Number(e.target.value))}
+                                        className="w-full bg-slate-100 border-none rounded-2xl px-4 py-3 font-black text-lg focus:ring-2 focus:ring-red-500"
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Lý do trả lại</label>
+                                        <select
+                                            value={returnReason}
+                                            onChange={(e) => setReturnReason(e.target.value)}
+                                            className="w-full bg-slate-100 border-none rounded-2xl px-4 py-3 font-bold text-sm focus:ring-2 focus:ring-red-500 transition-all"
+                                        >
+                                            <option value="">-- Chọn lý do --</option>
+                                            <option value="Bệnh nhân từ chối">Bệnh nhân từ chối</option>
+                                            <option value="Ra viện">Bệnh nhân ra viện</option>
+                                            <option value="Bác sĩ ngừng thuốc">Bác sĩ ngừng thuốc</option>
+                                            <option value="Khác">Lý do khác...</option>
+                                        </select>
+                                    </div>
+
+                                    {/* ✅ Nếu chọn "Khác" thì hiện thêm ô nhập text tự do */}
+                                    {returnReason === "Khác" && (
+                                        <div className="animate-in slide-in-from-top-2 duration-200">
+                                            <textarea
+                                                placeholder="Vui lòng nhập lý do cụ thể..."
+                                                rows={3}
+                                                // Bạn có thể dùng 1 state riêng (ví dụ: otherReason) hoặc ghi đè trực tiếp
+                                                onChange={(e) => {
+                                                    // Mẹo: Khi gửi API, nếu reason là "Khác", hãy lấy giá trị từ ô này
+                                                    window._otherReason = e.target.value;
+                                                }}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-red-400"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* NÚT BẤM HÀNH ĐỘNG */}
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={() => {
+                                    if (actionDrug.type === "CONFIRM") {
+                                        confirmMutation.mutate(actionDrug.idPhieuThuoc);
+                                    } else {
+                                        returnMutation.mutate({
+                                            idPhieuThuoc: actionDrug.idPhieuThuoc,
+                                            quantity: returnQty,
+                                            reason: returnReason
+                                        });
+                                    }
+                                }}
+                                disabled={actionDrug.type === "RETURN" && (!returnReason || returnQty <= 0)}
+                                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-lg transition disabled:opacity-50 ${actionDrug.type === "CONFIRM" ? "bg-green-600 shadow-green-100" : "bg-red-600 shadow-red-100"
+                                    }`}
+                            >
+                                Đồng ý xác nhận
+                            </button>
+                            <button
+                                onClick={() => setActionDrug(null)}
+                                className="font-black text-xs text-slate-400 uppercase py-2 hover:text-slate-600 transition"
+                            >
+                                Hủy bỏ
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
