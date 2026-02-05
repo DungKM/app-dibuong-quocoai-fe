@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { EncounterList } from "@/components/EncounterList";
-import { ShiftType } from "@/types/dibuong";
+import { ShiftType, SplitQty } from "@/types/dibuong";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MedicationOrders } from "@/components/MedicationOrders";
-import { getMedSplitsByEncounter, saveMedSplitOne, SplitQty } from "@/services/medSplit.api";
+import { getMedSplitsByEncounter, saveMedSplitOne } from "@/services/medSplit.api";
 type TabType = "PENDING" | "COMPLETED";
 
 const ZERO: SplitQty = { MORNING: 0, NOON: 0, AFTERNOON: 0, NIGHT: 0 };

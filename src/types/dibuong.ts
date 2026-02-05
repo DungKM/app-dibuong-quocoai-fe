@@ -198,3 +198,17 @@ export type MedVisitLite = {
   idPhieuKham?: string; 
   marSummary: MarSummary;
 };
+
+// Trong file src/types/dibuong.ts
+export interface SplitQty {
+    MORNING: number;
+    NOON: number;
+    AFTERNOON: number;
+    NIGHT: number;
+}
+
+// Thêm luôn type cho Response nếu cần
+export interface MedSplitsResponse {
+    idPhieuKham: string;
+    splits: Record<string, SplitQty>;
+}
