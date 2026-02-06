@@ -12,7 +12,6 @@ const PatientList = lazyNamed(() => import('@/pages/PatientList'), 'PatientList'
 const PatientDetail = lazyNamed(() => import('@/pages/PatientDetail'), 'PatientDetail');
 const MedicationList = lazyNamed(() => import('@/pages/MedicationList'), 'MedicationList');
 const MedicationDetail = lazyNamed(() => import('@/pages/MedicationDetail'), 'MedicationDetail');
-const WardStock = lazyNamed(() => import('@/pages/WardStock'), 'WardStock');
 const MedicationDashboard = lazyNamed(() => import('@/pages/MedicationDashboard'), 'MedicationDashboard');
 const RxInbox = lazyNamed(() => import('@/pages/RxInbox'), 'RxInbox');
 const TreatmentList = lazyNamed(() => import('@/pages/TreatmentList'), 'TreatmentList');
@@ -124,7 +123,6 @@ const App: React.FC = () => {
                     <Route path="/rx/inbox" element={<RxInbox />} />
                     <Route path="/medication" element={<MedicationList />} />
                     <Route path="/medication/dashboard" element={<MedicationDashboard />} />
-                    <Route path="/medication/ward-stock" element={<WardStock />} />
                     <Route path="/medication/:id" element={<MedicationDetail />} />
                     <Route path="/compliance/dashboard" element={<ComplianceDashboard />} />
 

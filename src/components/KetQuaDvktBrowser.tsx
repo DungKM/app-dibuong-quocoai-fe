@@ -15,7 +15,6 @@ type DocGroup = {
 
 function normalizePathToUrl(path: string | null | undefined, base: string) {
     if (!path) return "";
-
     const p = path.replace(/\\/g, "/").replace(/^\/+/, "");
     return base.replace(/\/+$/, "") + "/" + p;
 }
@@ -33,9 +32,11 @@ function fileNameFromUrl(url: string) {
 
 export const KetQuaDvktBrowser: React.FC<Props> = ({
     idPhieuKham,
-    baseFileUrl,
+    baseFileUrl = "",
 }) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    // State quản lý Popup xem PDF
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     const { data, isLoading, error } = useQuery<KetQuaDvktItem[]>({
         queryKey: ["ketqua_dvkt", idPhieuKham],
@@ -45,7 +46,6 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
 
     const groups: DocGroup[] = useMemo(() => {
         const list = data ?? [];
-
         const map = new Map<string, { url: string; name: string }[]>();
 
         list.forEach((it) => {
@@ -56,7 +56,6 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
             if (!url) return;
 
             const name = fileNameFromUrl(url);
-
             const arr = map.get(it.TenDVKT)!;
             if (!arr.some((f) => f.url === url)) arr.push({ url, name });
         });
@@ -67,131 +66,114 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
     const safeIndex = Math.min(selectedIndex, Math.max(groups.length - 1, 0));
     const selected = groups[safeIndex];
 
-    if (!idPhieuKham) {
-        return (
-            <div className="bg-white p-10 rounded-3xl border border-slate-200 shadow-sm text-center text-slate-400 font-bold">
-                Chọn một lần khám để xem hồ sơ/kết quả DVKT.
-            </div>
-        );
-    }
-
-    if (isLoading) {
-        return (
-            <div className="bg-white p-10 rounded-3xl border border-slate-200 shadow-sm text-center text-slate-400 font-bold">
-                Đang tải hồ sơ...
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="bg-red-50 p-6 rounded-3xl border border-red-100 text-red-700 font-bold">
-                Lỗi tải hồ sơ: {String((error as any)?.message || error)}
-            </div>
-        );
-    }
+    if (!idPhieuKham) return <div className="p-10 text-center text-slate-400 font-bold bg-white rounded-3xl border border-slate-200">Chọn một lần khám để xem hồ sơ.</div>;
+    if (isLoading) return <div className="p-10 text-center text-slate-400 font-bold bg-white rounded-3xl border border-slate-200">Đang tải hồ sơ...</div>;
+    if (error) return <div className="p-6 bg-red-50 rounded-3xl border border-red-100 text-red-700 font-bold font-bold">Lỗi tải hồ sơ.</div>;
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-[500px]">
-                {/* LEFT */}
+                {/* LEFT: Danh mục */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-y-auto p-4 max-h-[200px] md:max-h-full">
-                    <h3 className="font-bold text-slate-800 mb-4 text-sm uppercase">
-                        Danh mục hồ sơ
-                    </h3>
-
+                    <h3 className="font-bold text-slate-800 mb-4 text-sm uppercase">Danh mục hồ sơ</h3>
                     {groups.length === 0 ? (
-                        <div className="text-sm text-slate-400 font-bold">
-                            Chưa có kết quả DVKT.
-                        </div>
+                        <div className="text-sm text-slate-400 font-bold">Chưa có kết quả.</div>
                     ) : (
-                        <ul className="space-y-2">
-                            <li>
-                                <div className="font-bold text-slate-700 text-sm mb-1">
-                                    Hồ sơ bệnh án
-                                </div>
-
-                                <ul className="pl-4 border-l-2 border-slate-100 space-y-1">
-                                    {groups.map((g, idx) => {
-                                        const active = idx === safeIndex;
-                                        return (
-                                            <li
-                                                key={`${g.title}-${idx}`}
-                                                onClick={() => setSelectedIndex(idx)}
-                                                className={[
-                                                    "text-sm cursor-pointer px-2 py-1 rounded text-slate-600",
-                                                    active ? "bg-blue-50 text-primary font-medium" : "hover:bg-slate-50",
-                                                ].join(" ")}
-                                            >
-                                                <i className="fa-regular fa-folder mr-2" />
-                                                {g.title}
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            </li>
+                        <ul className="space-y-1">
+                            {groups.map((g, idx) => (
+                                <li
+                                    key={`${g.title}-${idx}`}
+                                    onClick={() => setSelectedIndex(idx)}
+                                    className={`text-sm cursor-pointer px-3 py-2 rounded-lg transition ${
+                                        idx === safeIndex ? "bg-blue-50 text-primary font-bold" : "hover:bg-slate-50 text-slate-600"
+                                    }`}
+                                >
+                                    <i className="fa-regular fa-folder mr-2" />
+                                    {g.title}
+                                </li>
+                            ))}
                         </ul>
                     )}
                 </div>
 
-                {/* RIGHT */}
+                {/* RIGHT: Danh sách File */}
                 <div className="md:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col min-h-[300px]">
-                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                        <div className="min-w-0">
-                            <div className="text-xs text-slate-500 mb-0.5">Danh mục đang chọn</div>
-                            <h3 className="font-bold text-slate-800 truncate max-w-[200px] sm:max-w-none">
-                                {selected?.title ?? "--"}
-                            </h3>
-                        </div>
-
-                        <label className="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-sky-600 transition flex items-center whitespace-nowrap">
-                            <i className="fa-solid fa-camera mr-2" />
-                            <span className="hidden sm:inline">Upload File</span>
-                            <input type="file" className="hidden" />
-                        </label>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="space-y-2">
-                            {(selected?.files ?? []).map((f) => (
-                                <div
-                                    key={f.url}
-                                    className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:bg-slate-50"
-                                >
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-8 h-8 bg-red-100 text-red-500 rounded flex flex-shrink-0 items-center justify-center">
-                                            <i className="fa-solid fa-file-pdf" />
-                                        </div>
-
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-slate-800 truncate">
-                                                {f.name}
-                                            </p>
-                                            <p className="text-[10px] text-slate-400 truncate">
-                                                {f.url}
-                                            </p>
-                                        </div>
+                    <h3 className="font-bold text-slate-800 mb-4 border-b pb-3">{selected?.title ?? "--"}</h3>
+                    <div className="flex-1 overflow-y-auto space-y-2">
+                        {(selected?.files ?? []).map((f) => (
+                            <div
+                                key={f.url}
+                                onClick={() => setPreviewUrl(f.url)} // Nhấn vào cả dòng để xem
+                                className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-blue-50/50 hover:border-blue-200 cursor-pointer transition group"
+                            >
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="w-10 h-10 bg-red-50 text-red-500 rounded-lg flex flex-shrink-0 items-center justify-center text-lg">
+                                        <i className="fa-solid fa-file-pdf" />
                                     </div>
-
-                                    <a
-                                        href={f.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-slate-400 hover:text-primary px-2"
-                                        title="Tải xuống / mở file"
-                                    >
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-slate-800 truncate">{f.name}</p>
+                                        <p className="text-[10px] text-slate-400 truncate tracking-tight">{f.url}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     <button className="text-slate-400 group-hover:text-primary p-2">
+                                        <i className="fa-solid fa-eye" />
+                                     </button>
+                                     <a 
+                                        href={f.url} 
+                                        download 
+                                        onClick={(e) => e.stopPropagation()} // Không mở popup khi bấm download
+                                        className="text-slate-400 hover:text-green-600 p-2"
+                                     >
                                         <i className="fa-solid fa-download" />
-                                    </a>
+                                     </a>
                                 </div>
-                            ))}
-                            {(selected?.files?.length ?? 0) === 0 && (
-                                <div className="border border-dashed border-slate-200 rounded-3xl p-10 text-center text-slate-400 font-bold">
-                                    Không có file kết quả trong danh mục này.
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
+
+            {/* MODAL POPUP XEM PDF */}
+            {previewUrl && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 md:p-10">
+                    <div className="bg-white w-full h-full max-w-6xl rounded-3xl overflow-hidden flex flex-col shadow-2xl">
+                        {/* Header của Popup */}
+                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+                            <div className="flex items-center gap-3">
+                                <i className="fa-solid fa-file-pdf text-red-500 text-xl" />
+                                <span className="font-bold text-slate-800 truncate max-w-md">
+                                    {fileNameFromUrl(previewUrl)}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <a 
+                                    href={previewUrl} 
+                                    target="_blank" 
+                                    className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition"
+                                >
+                                    Mở tab mới
+                                </a>
+                                <button 
+                                    onClick={() => setPreviewUrl(null)}
+                                    className="w-10 h-10 flex items-center justify-center bg-slate-200 hover:bg-red-500 hover:text-white rounded-full transition"
+                                >
+                                    <i className="fa-solid fa-xmark" />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* Nội dung PDF */}
+                        <div className="flex-1 bg-slate-100">
+                            <iframe
+                                src={`${previewUrl}#toolbar=0`}
+                                className="w-full h-full"
+                                title="PDF Preview"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -43,6 +43,7 @@ export interface BenhAnItem {
   TongThuocDung: number | null;
   SoPhong: string | null;
   SoGiuong: string | null;
+  IdPhieuKhamMoiNhat: string | null;
 }
 export type Patient = { id: string | number };
 export type Bed = {

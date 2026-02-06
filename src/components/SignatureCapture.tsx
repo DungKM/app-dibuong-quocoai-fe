@@ -7,11 +7,11 @@ interface SignatureCaptureProps {
   onCancel: () => void;
 }
 
-export const SignatureCapture: React.FC<SignatureCaptureProps> = ({ 
-  title = "Xác nhận chữ ký", 
-  description = "Người bệnh ký tên xác nhận", 
-  onSave, 
-  onCancel 
+export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
+  title = "Xác nhận chữ ký",
+  description = "Người bệnh ký tên xác nhận",
+  onSave,
+  onCancel
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -35,19 +35,19 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
       if (parent) {
         const rect = parent.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
-        
+
         // Set actual size in memory
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
-        
+
         // Scale context
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            ctx.scale(dpr, dpr);
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000';
-            ctx.lineJoin = 'round';
+          ctx.scale(dpr, dpr);
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = '#000';
+          ctx.lineJoin = 'round';
         }
 
         // Set visible size
@@ -65,7 +65,7 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    
+
     let clientX, clientY;
     if ('touches' in e) {
       clientX = e.touches[0].clientX;
@@ -134,15 +134,15 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
             <i className="fa-solid fa-xmark text-lg"></i>
           </button>
         </div>
-        
+
         {/* Canvas Area */}
         <div className="flex-1 p-4 bg-slate-100 flex flex-col justify-center">
           <div className="bg-white rounded-xl shadow-inner border border-slate-300 relative h-64 w-full touch-none overflow-hidden">
-             {!hasSignature && (
-                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                     <span className="text-slate-300 font-bold text-2xl uppercase select-none opacity-50">Ký vào đây</span>
-                 </div>
-             )}
+            {!hasSignature && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-slate-300 font-bold text-2xl uppercase select-none opacity-50">Ký vào đây</span>
+              </div>
+            )}
             <canvas
               ref={canvasRef}
               className="w-full h-full cursor-crosshair touch-none block"
@@ -159,21 +159,21 @@ export const SignatureCapture: React.FC<SignatureCaptureProps> = ({
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-slate-200 flex gap-3 bg-white pb-safe">
-            <button 
-              onClick={handleClear}
-              className="px-6 py-3 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold transition flex items-center gap-2"
-            >
-              <i className="fa-solid fa-eraser"></i>
-              Ký lại
-            </button>
-            <button 
-              onClick={handleSave}
-              disabled={!hasSignature}
-              className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30 transition flex items-center justify-center gap-2"
-            >
-              <i className="fa-solid fa-file-signature"></i>
-              Xác nhận & Lưu
-            </button>
+          <button
+            onClick={handleClear}
+            className="px-6 py-3 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold transition flex items-center gap-2"
+          >
+            <i className="fa-solid fa-eraser"></i>
+            Ký lại
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!hasSignature}
+            className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30 transition flex items-center justify-center gap-2"
+          >
+            <i className="fa-solid fa-file-signature"></i>
+            Xác nhận & Lưu
+          </button>
         </div>
       </div>
     </div>

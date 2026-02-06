@@ -73,7 +73,6 @@ export const MedicationOrders: React.FC<Props> = ({
             hasBeenSplit && filterTab === "PENDING" ? "bg-[#f8fdfb] border-[#e2f3ee]" : "bg-white border-slate-100 shadow-sm"
           }`}>
             <div className="p-6">
-              {/* Header: Tên và Nút chức năng */}
               <div className="flex justify-between items-start gap-4 mb-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -108,8 +107,6 @@ export const MedicationOrders: React.FC<Props> = ({
                   </button>
                 )}
               </div>
-
-              {/* Hướng dẫn liều dùng nổi bật */}
               <div className="bg-[#fff9eb] border border-[#ffecd1] rounded-2xl p-4 flex gap-3 items-start mb-2">
                 <div className="w-8 h-8 rounded-xl bg-[#f59e0b] flex items-center justify-center text-white shrink-0 shadow-sm">
                   <i className="fa-solid fa-hand-holding-medical"></i>
@@ -119,8 +116,6 @@ export const MedicationOrders: React.FC<Props> = ({
                   <p className="text-sm font-bold text-[#78350f] leading-tight">{it.LieuDung || "Theo chỉ dẫn của bác sĩ"}</p>
                 </div>
               </div>
-
-              {/* Thông tin số lượng & Nút hành động (Tab Đã chia) */}
               {filterTab === "COMPLETED" && (
                 <div className="mt-4 pt-4 border-t border-slate-50">
                    <div className="flex gap-2 flex-wrap mb-4">

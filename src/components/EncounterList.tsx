@@ -41,131 +41,99 @@ export const EncounterList: React.FC<Props> = ({
   }, [data]);
 
   useEffect(() => {
-    if (mode === "latest" && !selectedEncounterId && latestEncounter) {
+    if (mode === "latest" && latestEncounter && selectedEncounterId !== latestEncounter.Id) {
       onChangeSelected(latestEncounter.Id);
     }
   }, [latestEncounter, mode, onChangeSelected, selectedEncounterId]);
 
-   console.log(idBenhAn);
   if (!idBenhAn) return null;
+  if (isLoading) return <div className="mt-5 text-sm font-black animate-pulse text-sky-400">Đang đồng bộ lần khám…</div>;
+  if (error) return <div className="mt-5 p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-red-600 font-bold text-sm">Lỗi kết nối dữ liệu lần khám</div>;
+  if (!latestEncounter) return <div className="mt-5 text-sm font-bold text-slate-400 italic">Bệnh nhân chưa có lịch sử khám</div>;
 
-  if (isLoading) {
-    return <div className="mt-5 text-sm font-bold text-slate-400">Đang tải lần khám…</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="mt-5 text-sm font-bold text-red-600">
-        Không tải được danh sách lần khám
-      </div>
-    );
-  }
-
-  if (mode === "latest" && !latestEncounter) {
-    return <div className="mt-5 text-sm font-bold text-slate-400">Chưa có lần khám nào</div>;
-  }
-
+  // --- GIAO DIỆN LATEST: Banner xanh sáng hiện đại ---
   if (mode === "latest") {
-    const e = latestEncounter!;
+    const e = latestEncounter;
     return (
-      <div className="mt-5 flex gap-3 pb-1">
-        <button
-          key={e.Id}
-          onClick={() => onChangeSelected(e.Id)}
-          className={[
-            "min-w-[260px] md:min-w-[300px] rounded-3xl border p-5 text-left transition-all",
-            selectedEncounterId === e.Id
-              ? "bg-blue-600 border-blue-600 text-white shadow-lg"
-              : "bg-white border-slate-200 hover:bg-slate-50",
-          ].join(" ")}
-        >
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-black">{e.Ma}</div>
-            <div className={selectedEncounterId === e.Id ? "text-white/80" : "text-slate-400"}>
-              <i className="fa-solid fa-circle text-[8px]" />
+      <div 
+        className="mt-5 rounded-[36px] p-6 text-white shadow-xl shadow-sky-100 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden group"
+        style={{ background: 'linear-gradient(135deg, #1EADED 0%, #0284C7 100%)' }}
+      >
+        {/* Họa tiết trang trí */}
+        <div className="absolute -right-4 -bottom-4 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform duration-700">
+           <i className="fa-solid fa-stethoscope text-[140px]" />
+        </div>
+        
+        <div className="relative z-10 space-y-2">
+          <div className="flex items-center gap-3">
+             <span className="bg-white/25 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/20">
+                Thông tin đợt điều trị
+             </span>
+             <span className="text-sky-100 font-mono text-xs opacity-80">{e.Ma}</span>
+          </div>
+          
+          <h3 className="text-2xl font-black tracking-tighter uppercase">{e.HoTen}</h3>
+          
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-sky-50">
+              <i className="fa-regular fa-calendar-days opacity-70" />
+              {formatDate(e.NgayThucKham)}
+            </div>
+            <div className="flex items-center gap-2 text-sm font-bold text-sky-50">
+              <i className="fa-solid fa-house-chimney-medical opacity-70" />
+              {e.TenKhoaKham}
             </div>
           </div>
+        </div>
 
-          <div
-            className={[
-              "mt-2 text-xs font-bold",
-              selectedEncounterId === e.Id ? "text-white/90" : "text-slate-600",
-            ].join(" ")}
+        <div className="relative z-10 flex items-center gap-3">
+          <button 
+            onClick={() => onChangeSelected(e.Id)}
+            className="bg-white text-sky-600 px-6 py-3.5 rounded-2xl font-black text-sm shadow-lg hover:bg-sky-50 active:scale-95 transition-all flex items-center gap-2"
           >
-            <i className="fa-regular fa-clock mr-2" />
-            {formatDate(e.NgayThucKham)}
-          </div>
-
-          <div
-            className={[
-              "mt-1 text-xs font-bold",
-              selectedEncounterId === e.Id ? "text-white/90" : "text-slate-600",
-            ].join(" ")}
-          >
-            <i className="fa-solid fa-user mr-2" />
-            {e.HoTen}
-          </div>
-
-          <div
-            className={[
-              "mt-2 text-[10px] font-black uppercase tracking-widest",
-              selectedEncounterId === e.Id ? "text-white/70" : "text-slate-400",
-            ].join(" ")}
-          >
-            {e.TenKhoaKham}
-          </div>
-        </button>
+            <i className="fa-solid fa-arrows-rotate" />
+            Cập nhật y lệnh
+          </button>
+        </div>
       </div>
     );
   }
 
+  // --- GIAO DIỆN ALL: Danh sách thẻ ngang ---
   return (
-    <div className="mt-5 flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="mt-5 flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
       {data?.map((e) => (
         <button
           key={e.Id}
           onClick={() => onChangeSelected(e.Id)}
-          className={[
-            "min-w-[260px] md:min-w-[300px] rounded-3xl border p-5 text-left transition-all",
+          className={`min-w-[280px] md:min-w-[320px] rounded-[32px] border-2 p-6 text-left transition-all duration-300 ${
             selectedEncounterId === e.Id
-              ? "bg-blue-600 border-blue-600 text-white shadow-lg"
-              : "bg-white border-slate-200 hover:bg-slate-50",
-          ].join(" ")}
+              ? "border-sky-500 bg-sky-500 text-white shadow-lg shadow-sky-100 -translate-y-1"
+              : "bg-white border-slate-100 hover:border-sky-200 hover:bg-sky-50/50 text-slate-600 shadow-sm"
+          }`}
         >
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-black">{e.Ma}</div>
-            <div className={selectedEncounterId === e.Id ? "text-white/80" : "text-slate-400"}>
-              <i className="fa-solid fa-circle text-[8px]" />
+          <div className="flex items-center justify-between mb-4">
+            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${
+                selectedEncounterId === e.Id ? "bg-white/20" : "bg-slate-100 text-slate-400"
+            }`}>
+                {e.Ma}
+            </span>
+            <div className={`w-2 h-2 rounded-full ${
+                selectedEncounterId === e.Id ? "bg-white animate-pulse" : "bg-slate-200"
+            }`} />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className={`text-base font-black uppercase truncate ${selectedEncounterId === e.Id ? "text-white" : "text-slate-900"}`}>
+                {e.HoTen}
             </div>
-          </div>
-
-          <div
-            className={[
-              "mt-2 text-xs font-bold",
-              selectedEncounterId === e.Id ? "text-white/90" : "text-slate-600",
-            ].join(" ")}
-          >
-            <i className="fa-regular fa-clock mr-2" />
-            {formatDate(e.NgayThucKham)}
-          </div>
-
-          <div
-            className={[
-              "mt-1 text-xs font-bold",
-              selectedEncounterId === e.Id ? "text-white/90" : "text-slate-600",
-            ].join(" ")}
-          >
-            <i className="fa-solid fa-user mr-2" />
-            {e.HoTen}
-          </div>
-
-          <div
-            className={[
-              "mt-2 text-[10px] font-black uppercase tracking-widest",
-              selectedEncounterId === e.Id ? "text-white/70" : "text-slate-400",
-            ].join(" ")}
-          >
-            {e.TenKhoaKham}
+            <div className={`text-xs font-bold flex items-center gap-2 ${selectedEncounterId === e.Id ? "text-sky-100" : "text-slate-500"}`}>
+              <i className="fa-regular fa-clock opacity-60" />
+              {formatDate(e.NgayThucKham)}
+            </div>
+            <div className={`text-[10px] font-black uppercase tracking-[0.15em] pt-3 ${selectedEncounterId === e.Id ? "text-sky-200" : "text-slate-400"}`}>
+                {e.TenKhoaKham}
+            </div>
           </div>
         </button>
       ))}

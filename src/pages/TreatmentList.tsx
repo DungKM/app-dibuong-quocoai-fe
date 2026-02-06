@@ -29,27 +29,31 @@ export const TreatmentList: React.FC = () => {
     return data.DSPhong.map((phong) => ({
       room: phong.Ma,
       beds: phong.DsGiuong.map((giuong) => {
-        const benhAn = giuong.DsBenhAn?.[0];
+        const patients = (giuong.DsBenhAn ?? []).map((ba) => ({
+          id: ba.IdBenhAn,
+          name: ba.HoTenBenhNhan,
+          code: ba.MaBenhNhan,
+          room: phong.Ma,
+          bed: giuong.MaGiuong,
+          medicationToday:
+            ba.TongThuocDung == null
+              ? { total: 0, done: 0 }
+              : { total: ba.TongThuocDung, done: 0 },
+          maBenhAn: ba.MaBenhAn,
+          gioiTinh: ba.GioiTinh,
+          tuoi: ba.Tuoi,
+          isTyc: giuong.isTyc,
+          idPhieuKham: ba.IdPhieuKhamMoiNhat,
+        }));
+
         return {
           code: giuong.MaGiuong,
-          patient: benhAn
-            ? {
-              id: benhAn.IdBenhAn,
-              name: benhAn.HoTenBenhNhan,
-              code: benhAn.MaBenhNhan,
-              room: phong.Ma,
-              bed: giuong.MaGiuong,
-              maBenhAn: benhAn.MaBenhAn,
-              gioiTinh: benhAn.GioiTinh,
-              tuoi: benhAn.Tuoi,
-              isTyc: giuong.isTyc,
-            }
-            : undefined,
+          isOccupied: patients.length > 0,
+          patients: patients,
         };
       }),
     }));
   }, [data]);
-
   const filteredWard = useMemo(() => {
     const s = searchTerm.trim().toLowerCase();
     if (!s) return wardLayout;
@@ -86,9 +90,7 @@ export const TreatmentList: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-32 max-w-[1400px] mx-auto">
-      {/* ✅ 1 hàng: chọn khoa + search (rõ + không lỗi arrow) */}
       <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-        {/* Select wrapper để vẽ arrow riêng */}
         <div className="relative md:w-[320px]">
           <select
             value={idKhoa}
@@ -102,12 +104,8 @@ export const TreatmentList: React.FC = () => {
               </option>
             ))}
           </select>
-
-          {/* Arrow custom */}
           <i className="fa-solid fa-chevron-down pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 text-sm" />
         </div>
-
-        {/* Search rõ hơn */}
         <div className="relative flex-1">
           <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
