@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getBuongPhong, getDonThuocByPhieuKham } from "@/services/dibuong.api";
 import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/types/dibuong";
 import { MedicationBedCard } from "@/components/MedicationBedCard";
-import { buildAllShiftStats } from "@/components/buildAllShiftStats";
 import { getMedSplitsByEncounter } from "@/services/medSplit.api";
 import { buildAdvancedShiftStats } from "@/components/buildAdvancedShiftStats";
 
@@ -41,15 +40,15 @@ export const MedicationList: React.FC = () => {
     const set = new Set<string>();
     wardData?.DSPhong?.forEach((phong: any) => {
       phong?.DsGiuong?.forEach((giuong: any) => {
-        const benhAn = giuong?.DsBenhAn?.[0];
-        const idPhieuKham = benhAn?.IdPhieuKhamMoiNhat;
-        if (idPhieuKham) set.add(String(idPhieuKham));
+        giuong?.DsBenhAn?.forEach((benhAn: any) => {
+          const id = benhAn?.IdPhieuKhamMoiNhat;
+          if (id) set.add(String(id));
+        });
       });
     });
     return Array.from(set);
   }, [wardData]);
 
-  // console.log(phieuKhamIds);
   /** 3) Fetch thuốc theo từng idPhieuKham */
   const {
     data: medsByVisit,
@@ -89,86 +88,86 @@ export const MedicationList: React.FC = () => {
     return wardData.DSPhong.map((phong: any) => ({
       room: phong.Ma,
       beds: (phong.DsGiuong ?? []).map((giuong: any) => {
-        const benhAn = giuong?.DsBenhAn?.[0];
         const bedCode = giuong?.MaGiuong ?? "--";
 
-        if (!benhAn) return { code: bedCode, visit: undefined };
+        const visits: MedVisitLite[] = (giuong.DsBenhAn ?? []).map((benhAn: any) => {
+          const idPK = String(benhAn?.IdPhieuKhamMoiNhat);
+          const meds = medsByVisit?.[idPK] ?? [];
+          const splits = allSplitsByVisit?.[idPK] ?? {};
+          const shifts = buildAdvancedShiftStats(meds, splits);
 
-        const idPhieuKham = String(benhAn?.IdPhieuKhamMoiNhat);
-        const meds = medsByVisit?.[idPhieuKham] ?? [];
-        const splits = allSplitsByVisit?.[idPhieuKham] ?? {}; // Dữ liệu thực tế (status, returnHistory...)
+          return {
+            id: String(benhAn.IdBenhAn),
+            patientName: benhAn.HoTenBenhNhan,
+            patientCode: benhAn.MaBenhNhan,
+            patientGender: benhAn.GioiTinh,
+            patientAge: benhAn.Tuoi,
+            room: String(phong.Ma),
+            bed: String(bedCode),
+            idPhieuKham: idPK,
+            marSummary: { shifts },
+          };
+        });
 
-        // ✅ CẬP NHẬT LOGIC TÍNH STATS: Kết hợp đơn gốc + dữ liệu thực tế
-        const shifts = buildAdvancedShiftStats(meds, splits, selectedDate);
-
-        const visit: MedVisitLite = {
-          id: String(benhAn.IdBenhAn),
-          patientName: benhAn.HoTenBenhNhan,
-          patientCode: benhAn.MaBenhNhan,
-          patientGender: benhAn.GioiTinh,
-          room: String(phong.Ma),
-          bed: String(bedCode),
-          idPhieuKham,
-          marSummary: { shifts },
+        return {
+          code: bedCode,
+          visits,
+          isOccupied: visits.length > 0
         };
-
-        return { code: bedCode, visit };
       }),
     }));
-  }, [wardData, medsByVisit, allSplitsByVisit, selectedDate]);
-  /** Nếu bạn chưa có API "chốt ca", tạm để false */
+  }, [wardData, medsByVisit, allSplitsByVisit]);
   const isClosed = false;
-
   const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
   const error = wardError || medsError;
 
+  // ... (giữ nguyên phần logic React và useQuery)
+
   return (
-    <div className="space-y-6 pb-24 max-w-[1300px] mx-auto">
-      {/* Dashboard Header */}
-      <div className="bg-white p-6 rounded-[36px] border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-primary text-white rounded-[24px] flex items-center justify-center text-3xl shadow-xl shadow-primary/20 transform -rotate-2">
+    <div className="space-y-4 md:space-y-6 pb-24 px-3 md:px-6 max-w-[1300px] mx-auto">
+      {/* Dashboard Header: Chuyển thành 1 cột trên mobile */}
+      <div className="bg-white p-4 md:p-6 rounded-[28px] md:rounded-[36px] border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-4 md:gap-5">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary text-white rounded-[20px] md:rounded-[24px] flex items-center justify-center text-xl md:text-3xl shadow-xl shadow-primary/20 transform -rotate-2">
             <i className="fa-solid fa-pills"></i>
           </div>
 
           <div>
-            <h1 className="text-3xl font-black text-slate-900 uppercase leading-none mb-1 tracking-tighter">
-              Thực hiện dùng thuốc
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 uppercase leading-none mb-1 tracking-tighter">
+              Thực hiện thuốc
               {isClosed && (
-                <span className="ml-3 bg-red-600 text-white text-[8px] px-2 py-1 rounded-full uppercase font-black align-middle tracking-widest shadow-md animate-pulse">
-                  <i className="fa-solid fa-lock mr-1"></i>Đã chốt
+                <span className="ml-2 bg-red-600 text-white text-[7px] px-2 py-0.5 rounded-full uppercase font-black align-middle shadow-md animate-pulse">
+                  Đã chốt
                 </span>
               )}
             </h1>
 
-            <div className="flex items-center gap-3 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-              {/* Khoa */}
-              <span className="flex items-center gap-1.5 font-bold bg-blue-50 text-primary px-3 py-1 rounded-full">
-                <i className="fa-solid fa-hospital"></i>{" "}
+            <div className="flex flex-wrap items-center gap-2 text-slate-400 text-[9px] md:text-[10px] font-black uppercase tracking-widest">
+              <span className="flex items-center gap-1.5 font-bold bg-blue-50 text-primary px-2 md:px-3 py-1 rounded-full">
+                <i className="fa-solid fa-hospital"></i>
                 <select
                   value={idKhoa}
                   onChange={(e) => setIdKhoa(e.target.value)}
                   className="bg-transparent outline-none font-black"
                 >
                   {KHOA_OPTIONS.map((k) => (
-                    <option key={k.id} value={k.id}>
-                      {k.name}
-                    </option>
+                    <option key={k.id} value={k.id}>{k.name}</option>
                   ))}
                 </select>
               </span>
-
-              <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
               <span className="flex items-center gap-1.5">
-                <i className="fa-solid fa-shield-halved"></i> Giám sát 5 đúng
+                <i className="fa-solid fa-shield-halved"></i> 5 đúng
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 shadow-inner">
-            <i className="fa-solid fa-calendar-check text-primary text-sm"></i>
+        <div className="w-full lg:w-auto">
+          <div className="flex items-center justify-between lg:justify-start gap-3 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 shadow-inner">
+            <div className="flex items-center gap-2">
+              <i className="fa-solid fa-calendar-check text-primary text-sm"></i>
+              <span className="text-[10px] font-black text-slate-400 uppercase lg:hidden">Ngày:</span>
+            </div>
             <input
               type="date"
               value={selectedDate}
@@ -179,86 +178,76 @@ export const MedicationList: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs ca */}
-      <div className="bg-slate-200/30 p-2 rounded-2xl flex gap-2 shadow-inner w-full max-w-5xl mx-auto">
-        {[
-          { id: ShiftType.MORNING, label: "Sáng", icon: "fa-sun" },
-          { id: ShiftType.NOON, label: "Trưa", icon: "fa-cloud-sun" },
-          { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
-          { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
-        ].map((s) => {
-          const totalInShift = wardLayout.reduce((acc, room) => {
-            return acc + room.beds.reduce((accBed, bed) => {
-              return accBed + (bed.visit?.marSummary?.shifts?.[s.id]?.total ?? 0);
+      {/* Tabs ca: Cho phép cuộn ngang trên mobile nếu quá dài */}
+      <div className="overflow-x-auto no-scrollbar pb-1">
+        <div className="bg-slate-200/30 p-1.5 rounded-2xl flex gap-1.5 shadow-inner min-w-[400px] md:min-w-0 md:max-w-5xl md:mx-auto">
+          {[
+            { id: ShiftType.MORNING, label: "Sáng", icon: "fa-sun" },
+            { id: ShiftType.NOON, label: "Trưa", icon: "fa-cloud-sun" },
+            { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
+            { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
+          ].map((s) => {
+            const totalInShift = wardLayout.reduce((acc, room) => {
+              return acc + room.beds.reduce((accBed, bed) => {
+                const bedTotal = bed.visits.reduce((accVisit, v) =>
+                  accVisit + (v.marSummary?.shifts?.[s.id]?.total ?? 0), 0);
+                return accBed + bedTotal;
+              }, 0);
             }, 0);
-          }, 0);
 
-          return (
-            <button
-              key={s.id}
-              onClick={() => setActiveShift(s.id)}
-              className={`flex-1 py-3.5 rounded-2xl transition-all flex flex-col items-center justify-center relative
-        ${activeShift === s.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}
-            >
-              {totalInShift > 0 && (
-                <span className="absolute top-2 right-4 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-              )}
-              <div className="flex items-center gap-2">
-                <i className={`fa-solid ${s.icon} text-[12px]`} />
-                <span className="text-[11px] font-extrabold uppercase">{s.label}</span>
-              </div>
-              <span className="text-[9px] font-bold opacity-60 italic">({totalInShift} thuốc)</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveShift(s.id)}
+                className={`flex-1 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center relative
+                ${activeShift === s.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}
+              >
+                {totalInShift > 0 && (
+                  <span className="absolute top-1 right-2 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                  </span>
+                )}
+                <div className="flex items-center gap-1.5 md:gap-2">
+                  <i className={`fa-solid ${s.icon} text-[10px] md:text-[12px]`} />
+                  <span className="text-[9px] md:text-[11px] font-extrabold uppercase">{s.label}</span>
+                </div>
+                <span className="text-[8px] font-bold opacity-60 italic">({totalInShift})</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-40">
-          <i className="fa-solid fa-circle-notch fa-spin text-5xl text-primary opacity-20"></i>
-        </div>
-      ) : error ? (
-        <div className="max-w-[1300px] mx-auto p-6 bg-red-50 border border-red-200 text-red-700 font-bold rounded-3xl">
-          Lỗi tải dữ liệu: {String((error as any)?.message || error)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
-          {wardLayout.map((room) => (
-            <section key={room.room} className="space-y-4">
-              <div className="flex items-center gap-4 px-4">
-                <div className="w-12 h-12 bg-slate-900 text-white rounded-[18px] flex items-center justify-center font-black text-xl shadow-lg border-2 border-white transform rotate-3">
-                  {String(room.room).replace(/\D/g, "") || "--"}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-black text-xl text-slate-800 uppercase tracking-tight">Phòng {room.room}</h3>
-                </div>
-                <div className="h-px flex-1 bg-slate-100"></div>
+      {/* Grid Phòng và Giường: Tự động đổi số cột */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
+        {wardLayout.map((room) => (
+          <section key={room.room} className="space-y-4">
+            <div className="flex items-center gap-3 md:gap-4 px-2 md:px-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-[14px] md:rounded-[18px] flex items-center justify-center font-black text-lg md:text-xl shadow-lg border-2 border-white transform rotate-3">
+                {String(room.room).replace(/\D/g, "") || "--"}
               </div>
+              <div className="flex-1">
+                <h3 className="font-black text-base md:text-xl text-slate-800 uppercase tracking-tight">Phòng {room.room}</h3>
+              </div>
+              <div className="h-px flex-1 bg-slate-100"></div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                {room.beds.map((bed, idx) => (
-                  <MedicationBedCard
-                    key={`${room.room}-${bed.code}-${idx}`}
-                    bedCode={bed.code}
-                    visit={bed.visit}
-                    activeShift={activeShift}
-                    isClosed={isClosed}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-      {!isLoading && !error && phieuKhamIds.length === 0 ? (
-        <div className="max-w-[1300px] mx-auto p-5 bg-amber-50 border border-amber-200 text-amber-800 font-bold rounded-3xl">
-          ⚠️ Không tìm thấy <b>IdPhieuKham / IdLanKham / VisitId</b> trong DsBenhAn nên chưa thể gọi{" "}
-          <b>getDonThuocByPhieuKham()</b> để tính số thuốc theo ca.
-        </div>
-      ) : null}
+            {/* Giường: 1 cột trên mobile, 2 cột trên tablet trở lên */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+              {room.beds.map((bed, idx) => (
+                <MedicationBedCard
+                  key={`${room.room}-${bed.code}-${idx}`}
+                  bedCode={bed.code}
+                  visits={bed.visits}
+                  activeShift={activeShift}
+                  isClosed={isClosed}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 };

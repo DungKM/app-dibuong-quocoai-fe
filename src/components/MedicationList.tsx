@@ -4,7 +4,7 @@ import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
 import type { CachDungJson, DonThuocItem } from "@/types/dibuong";
 
 type Props = {
-  idPhieuKham: string | null; // selectedEncounterId
+  idPhieuKham: string | null; 
 };
 
 function formatDate(iso?: string | null) {
@@ -71,10 +71,7 @@ export const MedicationList: React.FC<Props> = ({ idPhieuKham }) => {
           : it.SoLuong != null
           ? `${it.SoLuong}${it.DonVi ? ` ${it.DonVi}` : ""}`
           : "--";
-
-      // note: bác sĩ + ngày kê (tuỳ bạn muốn)
       const meta = `${it.TenBacSiKeThuoc ?? "--"} • ${formatDate(it.NgayKeThuoc)}`;
-
       return {
         id: it.IdPhieuThuoc,
         drugName: it.Ten,

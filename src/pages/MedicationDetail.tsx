@@ -124,7 +124,7 @@ export const MedicationDetail: React.FC = () => {
     }, [selectedDrug?.splits]);
     if (!currentUser) return null;
     return (
-        <div className="pb-24 max-w-[1000px] mx-auto space-y-6">
+        <div className="pb-24 mx-auto space-y-6">
             <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 sticky top-16 z-30">
                 <div className="flex items-center gap-4">
                     <button
@@ -160,23 +160,13 @@ export const MedicationDetail: React.FC = () => {
                     )}
                 </div>
             </div>
-
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mx-4">
-                <div className="flex items-center justify-between gap-4 mb-4">
-                    <div>
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lần khám</div>
-                        <div className="text-slate-900 font-black mt-1">Chọn lần khám để xem đơn thuốc</div>
-                    </div>
-                </div>
-                <EncounterList
-                    idBenhAn={IdBenhAn}
-                    selectedEncounterId={selectedEncounterId}
-                    onChangeSelected={setSelectedEncounterId}
-                    mode="latest"
-                />
-            </div>
-
-            <div className="flex border-b border-slate-200 mx-4">
+            <EncounterList
+                idBenhAn={IdBenhAn}
+                selectedEncounterId={selectedEncounterId}
+                onChangeSelected={setSelectedEncounterId}
+                mode="latest"
+            />
+            <div className="flex border-b border-slate-200">
                 <button
                     onClick={() => setActiveTab("PENDING")}
                     className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${activeTab === "PENDING" ? "border-primary text-primary" : "border-transparent text-slate-400"
@@ -201,7 +191,6 @@ export const MedicationDetail: React.FC = () => {
                         { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
                         { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
                     ].map((s) => {
-                        // ✅ Kiểm tra xem ca này có thuốc nào không
                         const hasDataInShift = Object.values(splitData?.splits ?? {}).some(
                             (m) => Number(m.splits[s.id as keyof SplitQty] ?? 0) > 0
                         );
@@ -211,11 +200,10 @@ export const MedicationDetail: React.FC = () => {
                                 key={s.id}
                                 onClick={() => setActiveShift(s.id)}
                                 className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${activeShift === s.id
-                                        ? "bg-white text-primary shadow-sm"
-                                        : "text-slate-400 hover:bg-white/40"
+                                    ? "bg-white text-primary shadow-sm"
+                                    : "text-slate-400 hover:bg-white/40"
                                     }`}
                             >
-                                {/* Chấm xanh nhỏ báo hiệu có thuốc */}
                                 {hasDataInShift && (
                                     <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm"></span>
                                 )}
@@ -267,8 +255,6 @@ export const MedicationDetail: React.FC = () => {
                             <div className="flex-1">
                                 <div className="text-xs font-black text-slate-400 uppercase tracking-widest">Chia thuốc theo ca</div>
                                 <div className="text-xl font-black text-slate-900 leading-tight mt-1">{selectedDrug.ten}</div>
-
-                                {/* ✅ Hiển thị Note của bác sĩ */}
                                 <div className="mt-3 bg-amber-50 border border-amber-100 p-3 rounded-2xl flex gap-3">
                                     <i className="fa-solid fa-clipboard-check text-amber-500 mt-1"></i>
                                     <div>
@@ -299,7 +285,7 @@ export const MedicationDetail: React.FC = () => {
                                     </div>
                                     <input
                                         type="number"
-                                        step="0.5" // Hỗ trợ chia nửa viên nếu cần
+                                        step="0.5" 
                                         min={0}
                                         value={(selectedDrug.splits as any)[x.k]}
                                         onChange={(e) =>
