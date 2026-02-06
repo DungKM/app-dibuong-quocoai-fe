@@ -9,9 +9,17 @@ const BedCard: React.FC<BedCardProps> = ({ bedCode, patient, onClick }) => {
   const getStatusClasses = () => {
     if (!isOccupied) return "bg-slate-50 border-dashed border-slate-300 opacity-90 cursor-default";
     const stats = patient?.medicationToday;
+
+    // 1. Nếu không có y lệnh thuốc
     if (!stats || stats.total === 0) return "bg-white border-slate-200 shadow-sm";
-    if (stats.overdue > 0) return "bg-red-50 border-red-300 ring-4 ring-red-100";
+
+    // 2. Ưu tiên cảnh báo: Có thuốc quá giờ (Đỏ)
+    if (stats.overdue > 0) return "bg-red-50 border-red-300 ring-4 ring-red-100 animate-pulse-slow";
+
+    // 3. Đã hoàn thành tất cả thuốc trong ngày (Xanh lá)
     if (stats.done === stats.total) return "bg-green-50 border-green-300";
+
+    // 4. Đang chờ dùng thuốc (Xanh dương)
     return "bg-blue-50 border-primary/30 ring-2 ring-primary/5";
   };
 
@@ -58,11 +66,11 @@ const BedCard: React.FC<BedCardProps> = ({ bedCode, patient, onClick }) => {
         </div>
       )}
 
-      {isOccupied && (
+      {/* {isOccupied && (
         <div className="pt-2 border-t border-slate-100">
           <MedicationStatsSmall stats={patient?.medicationToday} />
         </div>
-      )}
+      )} */}
     </div>
   );
 };
