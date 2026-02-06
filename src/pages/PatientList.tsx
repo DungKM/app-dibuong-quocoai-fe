@@ -6,22 +6,7 @@ import { getBuongPhong } from "@/services/dibuong.api";
 import type { BuongPhongResponse } from "@/types/dibuong";
 // --- Sub-components for Ward Map ---
 
-const Legend: React.FC = () => (
-  <div className="flex flex-wrap items-center gap-6 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white px-6 py-4 rounded-[32px] border border-slate-100 shadow-sm">
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_8px_rgba(14,165,233,0.5)]"></div>
-      <span>Chờ dùng</span>
-    </div>
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-      <span>Hoàn thành</span>
-    </div>
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
-      <span>Quá giờ</span>
-    </div>
-  </div>
-);
+
 
 export const PatientList: React.FC = () => {
   const navigate = useNavigate();
@@ -107,7 +92,7 @@ export const PatientList: React.FC = () => {
           </div>
           <div>
             <h1 className="text-4xl font-black text-slate-900 uppercase leading-none mb-2 tracking-tighter">
-              Sơ đồ điều trị
+              Sơ đồ phòng giường
             </h1>
             <div className="flex items-center gap-4 text-slate-400 text-xs font-black uppercase tracking-[0.2em]">
               <span className="flex items-center gap-2 bg-blue-50 text-primary px-3 py-1 rounded-full">
@@ -172,19 +157,7 @@ export const PatientList: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-
-          <select
-            value={medFilter}
-            onChange={(e) => setMedFilter(e.target.value as any)}
-            className="px-6 py-4 rounded-3xl border-2 border-slate-50 bg-slate-50 text-sm font-black outline-none focus:bg-white focus:border-primary/30 transition-all text-slate-700 shadow-inner"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="DONE">🟢 Hoàn thành</option>
-            <option value="PENDING">🟡 Chờ dùng</option>
-            <option value="NONE">⚪ Chưa có y lệnh</option>
-          </select>
         </div>
-        <Legend />
       </div>
       <RoomGrid
         filteredWard={filteredWard}

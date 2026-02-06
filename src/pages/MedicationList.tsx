@@ -5,6 +5,8 @@ import { getBuongPhong, getDonThuocByPhieuKham } from "@/services/dibuong.api";
 import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/types/dibuong";
 import { MedicationBedCard } from "@/components/MedicationBedCard";
 import { buildAllShiftStats } from "@/components/buildAllShiftStats";
+import { getMedSplitsByEncounter } from "@/services/medSplit.api";
+import { buildAdvancedShiftStats } from "@/components/buildAdvancedShiftStats";
 
 const KHOA_OPTIONS = [
   { id: "41CA5C91-F449-404F-B37B-00EFE98B8375", name: "Khoa Nhi" },
@@ -40,7 +42,7 @@ export const MedicationList: React.FC = () => {
     wardData?.DSPhong?.forEach((phong: any) => {
       phong?.DsGiuong?.forEach((giuong: any) => {
         const benhAn = giuong?.DsBenhAn?.[0];
-        const idPhieuKham = benhAn?.IdPhieuKhamMoiNhat; 
+        const idPhieuKham = benhAn?.IdPhieuKhamMoiNhat;
         if (idPhieuKham) set.add(String(idPhieuKham));
       });
     });
@@ -66,23 +68,39 @@ export const MedicationList: React.FC = () => {
       return Object.fromEntries(entries);
     },
   });
-// console.log(medsByVisit);
+  /** 4) Fetch toàn bộ dữ liệu thực tế (MedShiftSplit) của các idPhieuKham */
+  const { data: allSplitsByVisit, isLoading: isLoadingSplits } = useQuery({
+    queryKey: ["allMedSplits", phieuKhamIds],
+    enabled: phieuKhamIds.length > 0,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        phieuKhamIds.map(async (id) => {
+          const res = await getMedSplitsByEncounter(id);
+          return [id, res.splits] as const;
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+  });
+
   const wardLayout = useMemo(() => {
     if (!wardData?.DSPhong) return [];
 
     return wardData.DSPhong.map((phong: any) => ({
-      room: phong.Ma, 
+      room: phong.Ma,
       beds: (phong.DsGiuong ?? []).map((giuong: any) => {
         const benhAn = giuong?.DsBenhAn?.[0];
         const bedCode = giuong?.MaGiuong ?? "--";
 
-        if (!benhAn) return { code: bedCode, visit: undefined as MedVisitLite | undefined };
+        if (!benhAn) return { code: bedCode, visit: undefined };
 
-        const idPhieuKham = benhAn?.IdPhieuKhamMoiNhat;
-        const meds = idPhieuKham ? medsByVisit?.[String(idPhieuKham)] ?? [] : [];
-        
-        const shifts = buildAllShiftStats(meds, selectedDate);
-         
+        const idPhieuKham = String(benhAn?.IdPhieuKhamMoiNhat);
+        const meds = medsByVisit?.[idPhieuKham] ?? [];
+        const splits = allSplitsByVisit?.[idPhieuKham] ?? {}; // Dữ liệu thực tế (status, returnHistory...)
+
+        // ✅ CẬP NHẬT LOGIC TÍNH STATS: Kết hợp đơn gốc + dữ liệu thực tế
+        const shifts = buildAdvancedShiftStats(meds, splits, selectedDate);
+
         const visit: MedVisitLite = {
           id: String(benhAn.IdBenhAn),
           patientName: benhAn.HoTenBenhNhan,
@@ -90,15 +108,14 @@ export const MedicationList: React.FC = () => {
           patientGender: benhAn.GioiTinh,
           room: String(phong.Ma),
           bed: String(bedCode),
-          idPhieuKham: idPhieuKham ? String(idPhieuKham) : undefined,
+          idPhieuKham,
           marSummary: { shifts },
         };
 
         return { code: bedCode, visit };
       }),
     }));
-  }, [wardData, medsByVisit, selectedDate]);
-
+  }, [wardData, medsByVisit, allSplitsByVisit, selectedDate]);
   /** Nếu bạn chưa có API "chốt ca", tạm để false */
   const isClosed = false;
 
@@ -165,28 +182,38 @@ export const MedicationList: React.FC = () => {
       {/* Tabs ca */}
       <div className="bg-slate-200/30 p-2 rounded-2xl flex gap-2 shadow-inner w-full max-w-5xl mx-auto">
         {[
-          { id: ShiftType.MORNING, label: "Sáng", range: "06-12h", icon: "fa-sun" },
-          { id: ShiftType.NOON, label: "Trưa", range: "12-14h", icon: "fa-cloud-sun" },
-          { id: ShiftType.AFTERNOON, label: "Chiều", range: "14-18h", icon: "fa-cloud" },
-          { id: ShiftType.NIGHT, label: "Tối/Đêm", range: "18-06h", icon: "fa-moon" },
-        ].map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setActiveShift(s.id)}
-            className={`flex-1 py-3.5 rounded-2xl transition-all flex flex-col items-center justify-center group relative overflow-hidden
-              ${activeShift === s.id ? "bg-white text-primary shadow-sm scale-[1.02]" : "text-slate-500 hover:bg-white/50"}`}
-          >
-            <div className="flex items-center gap-2">
-              <i
-                className={`fa-solid ${s.icon} text-[12px] ${activeShift === s.id ? "text-primary" : "text-slate-300"
-                  }`}
-              />
-              <span className="text-[11px] font-extrabold uppercase tracking-wider">{s.label}</span>
-            </div>
-            <span className="text-[9px] font-bold opacity-60 leading-none mt-1">{s.range}</span>
-            {activeShift === s.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />}
-          </button>
-        ))}
+          { id: ShiftType.MORNING, label: "Sáng", icon: "fa-sun" },
+          { id: ShiftType.NOON, label: "Trưa", icon: "fa-cloud-sun" },
+          { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
+          { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
+        ].map((s) => {
+          const totalInShift = wardLayout.reduce((acc, room) => {
+            return acc + room.beds.reduce((accBed, bed) => {
+              return accBed + (bed.visit?.marSummary?.shifts?.[s.id]?.total ?? 0);
+            }, 0);
+          }, 0);
+
+          return (
+            <button
+              key={s.id}
+              onClick={() => setActiveShift(s.id)}
+              className={`flex-1 py-3.5 rounded-2xl transition-all flex flex-col items-center justify-center relative
+        ${activeShift === s.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}
+            >
+              {totalInShift > 0 && (
+                <span className="absolute top-2 right-4 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              )}
+              <div className="flex items-center gap-2">
+                <i className={`fa-solid ${s.icon} text-[12px]`} />
+                <span className="text-[11px] font-extrabold uppercase">{s.label}</span>
+              </div>
+              <span className="text-[9px] font-bold opacity-60 italic">({totalInShift} thuốc)</span>
+            </button>
+          );
+        })}
       </div>
 
       {isLoading ? (
