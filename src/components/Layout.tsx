@@ -1,20 +1,13 @@
 
 import React, { useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { UserRole, SyncStatus, SyncQueueItem } from '@/types';
+import { UserRole } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/services/api';
 import avatar from "@/assets/avatar.jpg";
 
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { data: queue } = useQuery({
-    queryKey: ['sync-queue'],
-    queryFn: api.getSyncQueue,
-    refetchInterval: 5000
-  });
 
   if (!user) return null;
 

@@ -18,20 +18,17 @@ export interface BuongPhongResponse {
   };
   DSPhong: PhongItem[];
 }
-
 export interface PhongItem {
   Ma: string;
   SoGiuong: number;
   SoBenhNhan: number;
   DsGiuong: GiuongItem[];
 }
-
 export interface GiuongItem {
   MaGiuong: string;
   isTyc: boolean;
   DsBenhAn: BenhAnItem[];
 }
-
 export interface BenhAnItem {
   IdBenhAn: string;
   MaBenhAn: string;
@@ -156,7 +153,6 @@ export interface TongHopLinhItem {
   ThongTinThem: string | null;
   DsDonThuoc: TongHopLinhThuocItem[];
 }
-
 export interface TongHopLinhThuocItem {
   MaThuoc: string;
   TenThuoc: string;
@@ -166,29 +162,23 @@ export interface TongHopLinhThuocItem {
   IdBenhNhan: string;
   ThongTinThem: string | null;
 }
-
 export enum ShiftType  {
   MORNING = "MORNING",
   NOON = "NOON",
   AFTERNOON = "AFTERNOON",
   NIGHT = "NIGHT",
 }
-
 export type SlotKey = "SANG" | "TRUA" | "CHIEU" | "TOI";
-
 export const SHIFT_TO_SLOT: Record<ShiftType, SlotKey> = {
   [ShiftType.MORNING]: "SANG",
   [ShiftType.NOON]: "TRUA",
   [ShiftType.AFTERNOON]: "CHIEU",
   [ShiftType.NIGHT]: "TOI",
 };
-
 export type ShiftStat = { used: number; pending: number; returned: number };
-
 export type MarSummary = {
   shifts: Record<ShiftType, ShiftStat>;
 };
-
 export type MedVisitLite = {
   id: string; 
   patientName: string;
@@ -199,16 +189,12 @@ export type MedVisitLite = {
   idPhieuKham?: string; 
   marSummary: MarSummary;
 };
-
-// Trong file src/types/dibuong.ts
 export interface SplitQty {
     MORNING: number;
     NOON: number;
     AFTERNOON: number;
     NIGHT: number;
 }
-
-// Thêm luôn type cho Response nếu cần
 export interface MedSplitsResponse {
     idPhieuKham: string;
     splits: Record<string, SplitQty>;

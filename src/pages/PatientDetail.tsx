@@ -1,5 +1,4 @@
 
-import { api } from '@/services/api';
 import { aiService } from '@/services/ai';
 import { useQuery } from '@tanstack/react-query';
 import { DvktList } from '@/components/DvktList';
@@ -10,7 +9,6 @@ import { SignatureCapture } from '@/components/SignatureCapture';
 import { ThongTinVaoVienCard } from '@/components/ThongTinVaoVienCard';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useMemo, useEffect } from 'react';
-import { AIAssistant } from '@/components/AIAssistant';
 import { EncounterTimeline } from '@/components/EncounterTimeline';
 import { KetQuaDvktBrowser } from '@/components/KetQuaDvktBrowser';
 import { env } from '@/config/env';
@@ -28,68 +26,6 @@ export const PatientDetail: React.FC = () => {
     const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'record' | 'vitals' | 'meds' | 'services' | 'notes'>('record');
     const [showSignature, setShowSignature] = useState<{ orderId: string, type: 'MED' | 'SERVICE' } | null>(null);
-    const [aiSummary, setAiSummary] = useState<string | null>(null);
-
-    const { data: patient, isLoading: pLoading } = useQuery({ queryKey: ['patient', id], queryFn: () => api.getPatientById(id!), enabled: !!id });
-    const { data: record } = useQuery({ queryKey: ['record', id], queryFn: () => api.getMedicalRecord(id!), enabled: !!id });
-    const { data: vitals } = useQuery({ queryKey: ['vitals', id], queryFn: () => api.getVitals(id!), enabled: !!id });
-    const { data: orders } = useQuery({ queryKey: ['orders', id], queryFn: () => api.getOrders(id!), enabled: !!id });
-    const { data: notes } = useQuery({ queryKey: ['notes', id], queryFn: () => api.getNotes(id!), enabled: !!id });
-
-    // AI Briefing
-    useEffect(() => {
-        if (patient && record && vitals) {
-            aiService.getClinicalSummary({ patient, record, vitals, orders, notes }).then(setAiSummary);
-        }
-    }, [patient?.id]);
-
-    const vitalsByEncounter = useMemo(() => {
-        const list = vitals ?? [];
-        const groups = new Map<string, {
-            encounterId: string;
-            encounterCode?: string;
-            encounterDate?: string;
-            doctorName?: string;
-            items: typeof list;
-        }>();
-
-        for (const v of list) {
-            const key = (v as any).encounterId || (v as any).encounterCode || 'UNKNOWN';
-
-            if (!groups.has(key)) {
-                groups.set(key, {
-                    encounterId: (v as any).encounterId ?? key,
-                    encounterCode: (v as any).encounterCode,
-                    encounterDate: (v as any).encounterDate || (v as any).encounterCreatedAt,
-                    doctorName: (v as any).doctorName,
-                    items: [],
-                });
-            }
-            groups.get(key)!.items.push(v);
-        }
-
-        // sort items trong từng lần (mới nhất trước)
-        const result = Array.from(groups.values()).map(g => ({
-            ...g,
-            items: [...g.items].sort((a: any, b: any) => +new Date(b.timestamp) - +new Date(a.timestamp)),
-        }));
-
-        // sort các lần khám (mới nhất trước) theo encounterDate nếu có, fallback theo timestamp mới nhất
-        result.sort((a, b) => {
-            const ad = a.encounterDate ? +new Date(a.encounterDate) : +new Date((a.items[0] as any).timestamp);
-            const bd = b.encounterDate ? +new Date(b.encounterDate) : +new Date((b.items[0] as any).timestamp);
-            return bd - ad;
-        });
-
-        return result;
-    }, [vitals]);
-
-    //   const addVitalMutation = useMutation({
-    //     mutationFn: (data: z.infer<typeof vitalSchema>) => api.createVital({ id: Math.random().toString(), patientId: id!, timestamp: new Date().toISOString(), creatorId: currentUser!.id, ...data }),
-    //     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vitals', id] }); resetVital(); }
-    //   });
-
-    if (pLoading) return <div className="text-center py-20"><i className="fa-solid fa-circle-notch fa-spin text-3xl text-primary"></i></div>;
 
     return (
         <div className="pb-20 relative">
@@ -117,22 +53,6 @@ export const PatientDetail: React.FC = () => {
                 </div>
             </div>
 
-            {/* AI Clinical Briefing */}
-            {/* {aiSummary && (
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1 rounded-3xl shadow-xl mb-6">
-                    <div className="bg-white/95 rounded-[22px] p-5 backdrop-blur-sm">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-xs">
-                                <i className="fa-solid fa-wand-magic-sparkles"></i>
-                            </div>
-                            <h3 className="text-sm font-black text-indigo-900 uppercase tracking-wider">Tóm tắt lâm sàng AI</h3>
-                        </div>
-                        <div className="prose prose-sm max-w-none text-slate-700 font-medium leading-relaxed" 
-                            dangerouslySetInnerHTML={{ __html: aiSummary.replace(/\n/g, '<br/>').replace(/• /g, '✨ ') }} />
-                    </div>
-                </div>
-            )} */}
-
             {/* Main Tabs */}
             <div className="flex overflow-x-auto gap-1 mb-8 border-b border-slate-200 pb-1 scrollbar-hide">
                 {[
@@ -142,7 +62,6 @@ export const PatientDetail: React.FC = () => {
                     { id: 'vitals', label: 'Sinh hiệu', icon: 'fa-heart-pulse' },
                     { id: 'notes', label: 'Diễn biến', icon: 'fa-clipboard-user' },
                     { id: 'documents', label: 'Tài liệu', icon: 'fa-book' },
-                    // { id: 'history', label: 'Lịch sử', icon: 'fa-briefcase' },
                 ].map(tab => (
                     <button
                         key={tab.id}
