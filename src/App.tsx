@@ -3,26 +3,17 @@ import React, { Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LoginPage } from './pages/LoginPage';
-// import "@fortawesome/fontawesome-free/css/all.min.css";
 
 // Lazy Load Pages for Performance
 const PatientList = lazyNamed(() => import('@/pages/PatientList'), 'PatientList');
 const PatientDetail = lazyNamed(() => import('@/pages/PatientDetail'), 'PatientDetail');
 const MedicationList = lazyNamed(() => import('@/pages/MedicationList'), 'MedicationList');
 const MedicationDetail = lazyNamed(() => import('@/pages/MedicationDetail'), 'MedicationDetail');
-const MedicationDashboard = lazyNamed(() => import('@/pages/MedicationDashboard'), 'MedicationDashboard');
 const RxInbox = lazyNamed(() => import('@/pages/RxInbox'), 'RxInbox');
 const TreatmentList = lazyNamed(() => import('@/pages/TreatmentList'), 'TreatmentList');
-const TreatmentDetail = lazyNamed(() => import('@/pages/TreatmentDetail'), 'TreatmentDetail');
-const SurgeryList = lazyNamed(() => import('@/pages/SurgeryList'), 'SurgeryList');
-const SurgeryDetail = lazyNamed(() => import('@/pages/SurgeryDetail'), 'SurgeryDetail');
-const RoundDashboard = lazyNamed(() => import('@/pages/RoundDashboard'), 'RoundDashboard');
 const UserProfile = lazyNamed(() => import('@/pages/UserProfile'), 'UserProfile');
-const ComplianceDashboard = lazyNamed(() => import('@/pages/ComplianceDashboard'), 'ComplianceDashboard');
-
-
 
 function lazyNamed<T extends React.ComponentType<any>>(
   loader: () => Promise<any>,
@@ -37,28 +28,21 @@ function lazyNamed<T extends React.ComponentType<any>>(
     return { default: comp as T };
   });
 }
-
-// Optimized Query Client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // Data stays fresh for 1 minute (reduces fetching)
-      gcTime: 1000 * 60 * 10, // Cache garbage collection after 10 mins
-      refetchOnWindowFocus: false, // Don't refetch on window focus
-      retry: 1 // Only retry once
+      staleTime: 1000 * 60, 
+      gcTime: 1000 * 60 * 10, 
+      refetchOnWindowFocus: false,
+      retry: 1 
     }
   }
 });
-
-// Fixed ErrorBoundary to properly resolve inherited React.Component properties in TypeScript
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
-  // Use property initialization for state to better assist TypeScript's type inference
   state = { hasError: false, error: null as any };
-
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
-
   componentDidCatch(error: any, errorInfo: any) {
     console.error("Uncaught error:", error, errorInfo);
   }
@@ -106,28 +90,13 @@ const App: React.FC = () => {
 
                 <Route element={<ProtectedRoute />}>
                   <Route element={<Layout />}>
-                    {/* Default Home: Patient List */}
                     <Route path="/" element={<Navigate to="/patients" replace />} />
                     <Route path="/patients" element={<PatientList />} />
                     <Route path="/patient/:id" element={<PatientDetail />} />
-                    
-                    {/* Module: Treatment (Đi buồng) */}
                     <Route path="/treatment" element={<TreatmentList />} />
-                    <Route path="/treatment/:id" element={<TreatmentDetail />} />
-
-                    {/* Module: Surgery (DVKT) */}
-                    <Route path="/surgery" element={<SurgeryList />} />
-                    <Route path="/surgery/:groupId" element={<SurgeryDetail />} />
-
-                    {/* Module: Medication (Dược) */}
                     <Route path="/rx/inbox" element={<RxInbox />} />
                     <Route path="/medication" element={<MedicationList />} />
-                    <Route path="/medication/dashboard" element={<MedicationDashboard />} />
                     <Route path="/medication/:id" element={<MedicationDetail />} />
-                    <Route path="/compliance/dashboard" element={<ComplianceDashboard />} />
-
-                    {/* Module: Rounds, Profile & System */}
-                    <Route path="/rounds/dashboard" element={<RoundDashboard />} />
                     <Route path="/profile" element={<UserProfile />} />
                   </Route>
                 </Route>
