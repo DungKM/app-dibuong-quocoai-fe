@@ -14,7 +14,7 @@ export const UserProfile: React.FC = () => {
 
     const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
         defaultValues: {
-            name: user?.name || '',
+            name: user?.username || '',
             avatar: user?.avatar || ''
         }
     });
