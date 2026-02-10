@@ -35,7 +35,7 @@ export interface RxChangeDetail {
 }
 
 // --- CORE TYPES ---
-export enum UserRole { DOCTOR = 'DOCTOR', NURSE = 'NURSE' }
+export enum UserRole { DOCTOR = 'doctor', NURSE = 'nurse', PHARMACIST = 'pharmacist', ADMIN = 'admin' }
 export enum PatientStatus { STABLE = 'STABLE', CRITICAL = 'CRITICAL', DISCHARGING = 'DISCHARGING' }
 export enum TreatmentStatus { WAITING = 'WAITING', IN_PROGRESS = 'IN_PROGRESS', BATCH_PASSED = 'BATCH_PASSED', PENDING = 'PENDING', FINISHED = 'FINISHED', DISCHARGED = 'DISCHARGED' }
 

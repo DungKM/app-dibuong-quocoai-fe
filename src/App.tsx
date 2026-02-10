@@ -14,6 +14,8 @@ const MedicationDetail = lazyNamed(() => import('@/pages/MedicationDetail'), 'Me
 const RxInbox = lazyNamed(() => import('@/pages/RxInbox'), 'RxInbox');
 const TreatmentList = lazyNamed(() => import('@/pages/TreatmentList'), 'TreatmentList');
 const UserProfile = lazyNamed(() => import('@/pages/UserProfile'), 'UserProfile');
+const UserAdminPage = lazyNamed(() => import('@/pages/UserAdminPage'), 'UserAdminPage');
+const DepartmentAdminPage = lazyNamed(() => import('@/pages/DepartmentAdminPage'), 'DepartmentAdminPage');
 
 function lazyNamed<T extends React.ComponentType<any>>(
   loader: () => Promise<any>,
@@ -98,6 +100,8 @@ const App: React.FC = () => {
                     <Route path="/medication" element={<MedicationList />} />
                     <Route path="/medication/:id" element={<MedicationDetail />} />
                     <Route path="/profile" element={<UserProfile />} />
+                    <Route path="/admin/users" element={<UserAdminPage />} />
+                    <Route path="/admin/departments" element={<DepartmentAdminPage />} />
                   </Route>
                 </Route>
               </Routes>
