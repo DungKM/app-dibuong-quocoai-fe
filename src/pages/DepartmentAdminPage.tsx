@@ -31,7 +31,6 @@ export const DepartmentAdminPage = () => {
     };
     return (
         <div className="max-w-[1400px] mx-auto p-4 md:p-10 space-y-8">
-            {/* Banner Header */}
             <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex justify-between items-center">
                 <div className="flex items-center gap-6">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-[24px] flex items-center justify-center text-3xl shadow-xl shadow-purple-100">
@@ -50,7 +49,6 @@ export const DepartmentAdminPage = () => {
                 </button>
             </div>
 
-            {/* Bảng danh sách chuyên sâu */}
             <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
                 <table className="w-full text-left">
                     <thead>
@@ -101,7 +99,6 @@ export const DepartmentAdminPage = () => {
                     </tbody>
                 </table>
             </div>
-            {/* ✅ FIX 2: Phải gọi Component Modal ở đây */}
             <DepartmentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

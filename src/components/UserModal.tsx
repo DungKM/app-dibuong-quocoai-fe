@@ -1,0 +1,106 @@
+import React, { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { authApi } from "@/services/auth.api";
+import { createPortal } from "react-dom";
+import { toast } from "react-hot-toast";
+
+export const UserModal = ({ isOpen, onClose, data, departments }: any) => {
+    const queryClient = useQueryClient();
+    const [formData, setFormData] = useState({
+        fullName: "", username: "", password: "", role: "nurse", idKhoa: ""
+    });
+
+    useEffect(() => {
+        if (data) {
+            setFormData({
+                fullName: data.fullName,
+                username: data.username,
+                password: "",
+                role: data.role,
+                idKhoa: data.idKhoa?._id || data.idKhoa || ""
+            });
+        } else {
+            setFormData({ fullName: "", username: "", password: "", role: "nurse", idKhoa: "" });
+        }
+    }, [data, isOpen]);
+
+    const mutation = useMutation({
+        mutationFn: (payload: any) =>
+            data ? authApi.updateUser(data._id, payload) : authApi.createUser(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+            toast.success(data ? "Cập nhật thành công!" : "Tạo tài khoản thành công!");
+            onClose();
+        },
+        onError: (err: any) => toast.error(err.message)
+    });
+
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white w-full max-w-md rounded-[40px] p-8 shadow-2xl animate-in zoom-in duration-300">
+                <h2 className="text-2xl font-black text-slate-800 uppercase mb-6 tracking-tighter">
+                    {data ? "Cập nhật nhân sự" : "Thêm nhân sự mới"}
+                </h2>
+
+                <div className="space-y-4">
+                    <input
+                        placeholder="Tên đăng nhập"
+                        value={formData.username}
+                        onChange={e => setFormData({ ...formData, username: e.target.value })}
+                        className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none"
+                    />
+                    {!data && (
+                        <input
+                            type="password"
+                            placeholder="Mật khẩu"
+                            value={formData.password}
+                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none"
+                        />
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <select
+                            value={formData.role}
+                            onChange={e => setFormData({ ...formData, role: e.target.value })}
+                            className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700"
+                        >
+                            <option value="doctor">Bác sĩ</option>
+                            <option value="nurse">Điều dưỡng</option>
+                            <option value="admin">Quản trị viên</option>
+                        </select>
+
+                        <select
+                            value={formData.idKhoa}
+                            onChange={e => setFormData({ ...formData, idKhoa: e.target.value })}
+                            className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700"
+                        >
+                            <option value="">Chọn Khoa/Phòng</option>
+                            {departments?.map((d: any) => (
+                                <option key={d._id} value={d.idHis}>
+                                    {d.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                    <button onClick={onClose} className="flex-1 py-4 font-black text-slate-400 uppercase text-xs">Hủy</button>
+                    <button
+                        onClick={() => mutation.mutate(formData)}
+                        disabled={mutation.isPending}
+                        className="flex-1 py-4 bg-[#1EADED] text-white rounded-2xl font-black uppercase text-xs shadow-lg shadow-sky-100 disabled:opacity-50"
+                    >
+                        {mutation.isPending ? "Đang xử lý..." : "Lưu dữ liệu"}
+                    </button>
+                </div>
+
+            </div>
+        </div>,
+        document.body
+    );
+};

@@ -5,8 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LoginPage } from './pages/LoginPage';
-
-// Lazy Load Pages for Performance
 const PatientList = lazyNamed(() => import('@/pages/PatientList'), 'PatientList');
 const PatientDetail = lazyNamed(() => import('@/pages/PatientDetail'), 'PatientDetail');
 const MedicationList = lazyNamed(() => import('@/pages/MedicationList'), 'MedicationList');

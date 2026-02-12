@@ -9,9 +9,23 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  if (!user) return null;
 
+  const isAdmin = user.role === UserRole.ADMIN;
   const isDoctor = user.role === UserRole.DOCTOR;
+  const isNurse = user.role === UserRole.NURSE;
+
+  const getRoleLabel = () => {
+    if (isAdmin) return 'Quản trị viên';
+    if (isDoctor) return 'Bác sĩ';
+    if (isNurse) return 'Điều dưỡng';
+    return 'Nhân viên';
+  };
+
+  const getRoleColorClass = () => {
+    if (isAdmin) return 'text-purple-600';
+    if (isDoctor) return 'text-primary';
+    return 'text-success';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -66,9 +80,11 @@ export const Layout: React.FC = () => {
 
             <Link to="/profile" className="flex items-center gap-2 border-l pl-2 sm:pl-4 border-slate-200 hover:bg-slate-50 p-1 sm:p-2 rounded-lg transition group">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-800 group-hover:text-primary transition max-w-[120px] truncate">{user.name}</p>
-                <p className={`text-xs ${isDoctor ? 'text-primary' : 'text-success'} font-medium`}>
-                  {isDoctor ? 'Bác sĩ' : 'Điều dưỡng'}
+                <p className="text-sm font-semibold text-slate-800 group-hover:text-primary transition max-w-[120px] truncate">
+                  {user.name}
+                </p>
+                <p className={`text-xs ${getRoleColorClass()} font-black uppercase tracking-tighter`}>
+                  {getRoleLabel()}
                 </p>
               </div>
               <img

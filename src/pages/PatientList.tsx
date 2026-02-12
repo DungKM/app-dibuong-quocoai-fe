@@ -41,15 +41,12 @@ export const PatientList: React.FC = () => {
         return {
           code: giuong.MaGiuong,
           isOccupied: patients.length > 0,
-          patients: patients, // ✅ Trả về mảng để hỗ trợ nằm ghép
+          patients: patients, 
         };
       }),
     }));
   }, [data]);
 
-  /** * ✅ Logic lọc mới: Duyệt qua mảng patients của từng giường
-   * Nếu tìm thấy bất kỳ bệnh nhân nào khớp, giữ lại giường đó và lọc danh sách patients
-   */
   const filteredWard = useMemo(() => {
     const s = searchTerm.trim().toLowerCase();
     if (!s) return wardLayout;
@@ -65,7 +62,6 @@ export const PatientList: React.FC = () => {
 
         return {
           ...bed,
-          // Chỉ hiển thị những bệnh nhân khớp hoặc trả về mảng rỗng nếu không khớp
           patients: matchingPatients,
           isOccupied: matchingPatients.length > 0,
         };
@@ -94,7 +90,6 @@ export const PatientList: React.FC = () => {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-32 px-4 md:px-6 max-w-[1400px] mx-auto">
-      {/* Header & Stats Dashboard */}
       <div className="bg-white p-6 md:p-8 rounded-[36px] md:rounded-[48px] border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8">
         <div className="flex items-center gap-4 md:gap-6">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-primary text-white rounded-[24px] md:rounded-[32px] flex items-center justify-center text-3xl md:text-4xl shadow-xl shadow-primary/20 transform -rotate-3 transition hover:rotate-0">
@@ -116,7 +111,6 @@ export const PatientList: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Grid: Tự động xuống hàng trên mobile */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 w-full lg:w-auto">
           {[
             { label: "Tổng giường", value: statsSummary.total, color: "slate" },
@@ -136,7 +130,6 @@ export const PatientList: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Bar - Đã được làm sắc nét */}
       <div className="flex justify-start">
         <div className="relative w-full md:w-96 group">
           <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors"></i>
@@ -150,7 +143,6 @@ export const PatientList: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid hiển thị phòng/giường */}
       <RoomGrid
         filteredWard={filteredWard}
         searchTerm={searchTerm}
