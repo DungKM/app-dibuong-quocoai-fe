@@ -19,11 +19,42 @@ export const authStorage = {
   getRole: () => localStorage.getItem(KEYS.ROLE) as Role | null,
 };
 
-// Hàm bổ trợ để tạo Headers có kèm Token
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",
   "Authorization": `Bearer ${authStorage.getAccessToken()}`,
 });
+
+
+const authenticatedRequest = async (url: string, options: RequestInit) => {
+  let res = await fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (res.status === 401) {
+    try {
+      console.log("Token expired, attempting auto-refresh...");
+      await authApi.refresh();
+
+      res = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          ...getAuthHeaders(),
+        },
+      });
+    } catch (refreshError) {
+      authStorage.clear();
+      window.location.href = "/login";
+      throw new Error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
+    }
+  }
+
+  return res;
+};
 
 export const authApi = {
   login: async (username: string, password: string) => {
@@ -62,13 +93,11 @@ export const authApi = {
     authStorage.set(data.accessToken, data.refreshToken || refreshToken, data.role);
     return data.accessToken;
   },
-  // ✅ BỔ SUNG HÀM LOGOUT
+
   logout: async () => {
     const refreshToken = authStorage.getRefreshToken();
-
     try {
       if (refreshToken) {
-        // Gọi API thông báo cho server xóa refresh token
         await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/logout`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,42 +107,36 @@ export const authApi = {
     } catch (error) {
       console.error("Logout API failed:", error);
     } finally {
-      // Luôn dọn dẹp storage bất kể API có thành công hay không
       authStorage.clear();
     }
   },
 
+  // --- CÁC HÀM QUẢN TRỊ NGƯỜI DÙNG (ADMIN) ---
+
   getUsers: async () => {
-    let res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users`, {
-      method: "GET",
-      headers: getAuthHeaders(),
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users`, {
+      method: "GET"
     });
-
-    if (res.status === 401) {
-      try {
-        console.log("Token hết hạn, đang tự động làm mới...");
-        await authApi.refresh();
-
-        res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users`, {
-          method: "GET",
-          headers: getAuthHeaders(),
-        });
-      } catch (refreshError) {
-        authStorage.clear();
-        window.location.href = "/login";
-        throw new Error("Phiên làm việc hết hạn, vui lòng đăng nhập lại.");
-      }
-    }
-
     if (!res.ok) throw new Error("Không thể tải danh sách nhân viên");
     const result = await res.json();
     return result.data;
   },
 
+  updateUser: async (id: string, payload: any) => {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users/${id}`, {
+      method: "PATCH", // Hoặc "PUT" tùy theo thiết kế Backend của bạn
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || "Lỗi khi cập nhật tài khoản");
+    }
+    return await res.json();
+  },
+  
   createUser: async (payload: any) => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users`, {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users`, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -124,9 +147,8 @@ export const authApi = {
   },
 
   updateStatus: async (id: string, isActive: boolean) => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users/${id}/status`, {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users/${id}/status`, {
       method: "PATCH",
-      headers: getAuthHeaders(),
       body: JSON.stringify({ isActive }),
     });
     if (!res.ok) throw new Error("Lỗi khi cập nhật trạng thái");
@@ -134,19 +156,19 @@ export const authApi = {
   },
 
   resetPassword: async (id: string, newPassword: string) => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users/${id}/reset-password`, {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users/${id}/reset-password`, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify({ newPassword }),
     });
     if (!res.ok) throw new Error("Lỗi khi đặt lại mật khẩu");
     return await res.json();
   },
 
+  // --- CÁC HÀM QUẢN TRỊ KHOA PHÒNG (ADMIN) ---
+
   getDepartments: async () => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments`, {
-      method: "GET",
-      headers: getAuthHeaders(),
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments`, {
+      method: "GET"
     });
     if (!res.ok) throw new Error("Không thể tải danh sách khoa phòng");
     const result = await res.json();
@@ -154,9 +176,8 @@ export const authApi = {
   },
 
   createDepartment: async (payload: { name: string; type: 'KHOA' | 'PHONG'; parentId?: string; idHis?: string }) => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments`, {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments`, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -167,9 +188,8 @@ export const authApi = {
   },
 
   updateDepartment: async (id: string, payload: { name?: string; type?: 'KHOA' | 'PHONG'; parentId?: string; idHis?: string }) => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments/${id}`, {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments/${id}`, {
       method: "PATCH",
-      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -180,9 +200,8 @@ export const authApi = {
   },
 
   deleteDepartment: async (id: string) => {
-    const res = await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments/${id}`, {
+      method: "DELETE"
     });
     if (!res.ok) {
       const error = await res.json();
