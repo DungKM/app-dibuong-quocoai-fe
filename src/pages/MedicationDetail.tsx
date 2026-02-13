@@ -167,7 +167,7 @@ export const MedicationDetail: React.FC = () => {
                 idBenhAn={IdBenhAn}
                 selectedEncounterId={selectedEncounterId}
                 onChangeSelected={setSelectedEncounterId}
-                mode="latest"
+                mode="all"
             />
             <div className="flex border-b border-slate-200">
                 <button
