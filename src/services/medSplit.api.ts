@@ -25,9 +25,22 @@ export function confirmMedUsage(idPhieuKham: string, idPhieuThuoc: string) {
     });
 }
 
-export function returnMedication(idPhieuKham: string, idPhieuThuoc: string, data: { quantity: number; reason: string }) {
-    return requestNode(`/api/encounters/${idPhieuKham}/med-splits/${idPhieuThuoc}/return`, {
-        method: "PATCH",
-        body: data
-    });
+export function returnMedication(
+  idPhieuKham: string,
+  idPhieuThuoc: string,
+  data: {
+    quantity: number;
+    reason: string;
+    tenBenhNhan: string;
+    maBenhNhan: string;
+    tenThuoc: string;
+  }
+) {
+  return requestNode(
+    `/api/encounters/${idPhieuKham}/med-splits/${idPhieuThuoc}/return`,
+    {
+      method: "PATCH",
+      body: data,
+    }
+  );
 }

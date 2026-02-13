@@ -101,10 +101,13 @@ export const MedicationDetail: React.FC = () => {
 
     // Mutation Trả thuốc
     const returnMutation = useMutation({
-        mutationFn: (data: { idPhieuThuoc: string; quantity: number; reason: string }) =>
+        mutationFn: (data: { idPhieuThuoc: string; quantity: number; reason: string; maBenhNhan: string; tenBenhNhan: string }) =>
             returnMedication(selectedEncounterId!, data.idPhieuThuoc, {
                 quantity: data.quantity,
-                reason: data.reason
+                reason: data.reason,
+                tenBenhNhan: tenBenhNhan || "Bệnh nhân",
+                maBenhNhan: maBenhNhan || "N/A",
+                tenThuoc: actionDrug?.ten || "Thuốc",
             }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
