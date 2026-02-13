@@ -40,11 +40,11 @@ export const Layout: React.FC = () => {
 
     return () => socket.disconnect();
   }, [user?.idKhoa]);
-  console.log(user?.idKhoa);
   // Logic phân quyền (giữ nguyên của bạn)
   const isAdmin = user.role === UserRole.ADMIN;
   const isDoctor = user.role === UserRole.DOCTOR;
   const isNurse = user.role === UserRole.NURSE;
+  console.log(user);
 
   const getRoleLabel = () => {
     if (isAdmin) return 'Quản trị viên';

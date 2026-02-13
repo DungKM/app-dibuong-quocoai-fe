@@ -6,6 +6,7 @@ export type LoginResponse = {
   role: Role;
   username?: string;  
   idKhoa?: string | null;
+  tenKhoa?: string | null;
 };
 
 export type AuthUser = {
