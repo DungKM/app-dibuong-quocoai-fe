@@ -156,9 +156,9 @@ export const Layout: React.FC = () => {
                               <p className="text-[11px] text-slate-500 mt-1 font-medium italic">
                                 Trả {n.soLuongTra} {n.tenThuoc}
                               </p>
-                              <p className="text-[9px] text-slate-300 font-bold mt-2 uppercase italic tracking-tighter">
+                              {/* <p className="text-[9px] text-slate-300 font-bold mt-2 uppercase italic tracking-tighter">
                                 Vừa xong • Khoa {user.tenKhoa}
-                              </p>
+                              </p> */}
                             </div>
                           </div>
                         ))

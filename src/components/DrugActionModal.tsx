@@ -1,15 +1,16 @@
 import React from "react";
 import { createPortal } from "react-dom";
 
-export const DrugActionModal = ({ 
-    actionDrug, 
-    setActionDrug, 
-    returnQty, 
-    setReturnQty, 
-    returnReason, 
-    setReturnReason, 
-    confirmMutation, 
-    returnMutation 
+export const DrugActionModal = ({
+    actionDrug,
+    setActionDrug,
+    returnQty,
+    setReturnQty,
+    returnReason,
+    setReturnReason,
+    confirmMutation,
+    returnMutation,
+    onReturn // Thêm prop này từ MedicationDetail truyền xuống
 }: any) => {
     if (!actionDrug) return null;
 
@@ -19,12 +20,11 @@ export const DrugActionModal = ({
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
             {/* Lớp nền mờ phủ kín toàn màn hình */}
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setActionDrug(null)} />
-            
+
             <div className="relative bg-white w-full max-sm:max-w-xs max-w-sm rounded-[44px] p-8 shadow-2xl animate-in zoom-in duration-200">
                 {/* Biểu tượng hành động */}
-                <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-4xl mb-6 shadow-lg ${
-                    isConfirm ? "bg-emerald-50 text-emerald-500 shadow-emerald-100" : "bg-red-50 text-red-500 shadow-red-100"
-                }`}>
+                <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-4xl mb-6 shadow-lg ${isConfirm ? "bg-emerald-50 text-emerald-500 shadow-emerald-100" : "bg-red-50 text-red-500 shadow-red-100"
+                    }`}>
                     <i className={`fa-solid ${isConfirm ? "fa-hand-holding-medical" : "fa-undo"}`}></i>
                 </div>
 
@@ -54,7 +54,7 @@ export const DrugActionModal = ({
                                 className="w-full bg-slate-100 border-none rounded-2xl px-4 py-3 font-black text-lg focus:ring-2 focus:ring-red-500 outline-none"
                             />
                         </div>
-                        
+
                         <div className="space-y-3">
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Lý do trả lại</label>
@@ -92,25 +92,19 @@ export const DrugActionModal = ({
                         onClick={() => {
                             if (isConfirm) {
                                 confirmMutation.mutate(actionDrug.idPhieuThuoc);
+                                setActionDrug(null);
                             } else {
-                                const finalReason = returnReason === "Khác" ? window._otherReason : returnReason;
-                                returnMutation.mutate({ 
-                                    idPhieuThuoc: actionDrug.idPhieuThuoc, 
-                                    quantity: returnQty, 
-                                    reason: finalReason 
-                                });
+                                onReturn();
                             }
-                            setActionDrug(null);
                         }}
                         disabled={!isConfirm && (!returnReason || returnQty <= 0)}
-                        className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-lg transition-all active:scale-95 disabled:opacity-40 ${
-                            isConfirm ? "bg-green-600 shadow-green-100" : "bg-red-600 shadow-red-100"
-                        }`}
+                        className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-lg transition-all active:scale-95 disabled:opacity-40 ${isConfirm ? "bg-green-600 shadow-green-100" : "bg-red-600 shadow-red-100"
+                            }`}
                     >
-                        Đồng ý thực hiện
+                        {isConfirm ? "Xác nhận dùng thuốc" : "Đồng ý trả thuốc"}
                     </button>
-                    <button 
-                        onClick={() => setActionDrug(null)} 
+                    <button
+                        onClick={() => setActionDrug(null)}
                         className="font-black text-[10px] text-slate-400 uppercase py-2 hover:text-slate-600 transition"
                     >
                         Hủy bỏ

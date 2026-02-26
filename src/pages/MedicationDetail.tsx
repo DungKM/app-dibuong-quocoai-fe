@@ -10,12 +10,14 @@ import { confirmMedUsage, getMedSplitsByEncounter, returnMedication, saveMedSpli
 import { DrugSplitModal } from "@/components/DrugSplitModal";
 import { CameraScannerModal } from "@/components/CameraScannerModal";
 import { DrugActionModal } from "@/components/DrugActionModal";
+import toast from "react-hot-toast";
 type TabType = "PENDING" | "COMPLETED";
 
 const ZERO: SplitQty = { MORNING: 0, NOON: 0, AFTERNOON: 0, NIGHT: 0 };
 
 export const MedicationDetail: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>("PENDING");
+
     const { id } = useParams<{ id: string }>();
     const IdBenhAn = id ?? "";
 
@@ -89,7 +91,7 @@ export const MedicationDetail: React.FC = () => {
     } | null>(null);
 
     const [returnReason, setReturnReason] = useState("");
-    const [returnQty, setReturnQty] = useState(0);
+    const [returnQuantity, setReturnQuantity] = useState(1);
     const confirmMutation = useMutation({
         mutationFn: (idPhieuThuoc: string) =>
             confirmMedUsage(selectedEncounterId!, idPhieuThuoc),
@@ -98,24 +100,27 @@ export const MedicationDetail: React.FC = () => {
             setActionDrug(null);
         }
     });
-
     // Mutation Trả thuốc
+    console.log(actionDrug?.ten);
     const returnMutation = useMutation({
-        mutationFn: (data: { idPhieuThuoc: string; quantity: number; reason: string; maBenhNhan: string; tenBenhNhan: string }) =>
-            returnMedication(selectedEncounterId!, data.idPhieuThuoc, {
-                quantity: data.quantity,
-                reason: data.reason,
-                tenBenhNhan: tenBenhNhan || "Bệnh nhân",
-                maBenhNhan: maBenhNhan || "N/A",
-                tenThuoc: actionDrug?.ten || "Thuốc",
-            }),
+        mutationFn: (data: any) => returnMedication(selectedEncounterId!, data.idPhieuThuoc, data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
             setActionDrug(null);
             setReturnReason("");
+            toast.success("Đã gửi yêu cầu trả thuốc");
         }
     });
+    const handleReturn = (payload: { quantity: number; reason: string }) => {
+        if (!actionDrug) return;
 
+        returnMutation.mutate({
+            idPhieuThuoc: actionDrug.idPhieuThuoc,
+            quantity: payload.quantity,
+            reason: payload.reason,
+            tenThuoc: actionDrug.ten,
+        });
+    };
     const totalSplits = useMemo(() => {
         if (!selectedDrug) return 0;
         return (
@@ -244,7 +249,7 @@ export const MedicationDetail: React.FC = () => {
                 }}
                 onAction={(data) => {
                     if (data.type === "RETURN") {
-                        setReturnQty(data.qty);
+                        setReturnQuantity(data.qty);
                         setReturnReason("");
                     }
                     setActionDrug(data);
@@ -272,12 +277,28 @@ export const MedicationDetail: React.FC = () => {
                 <DrugActionModal
                     actionDrug={actionDrug}
                     setActionDrug={setActionDrug}
-                    returnQty={returnQty}
-                    setReturnQty={setReturnQty}
+                    returnQty={returnQuantity}
+                    setReturnQty={setReturnQuantity}
                     returnReason={returnReason}
                     setReturnReason={setReturnReason}
                     confirmMutation={confirmMutation}
                     returnMutation={returnMutation}
+                    onReturn={() => {
+                        if (!actionDrug || !selectedEncounterId) return;
+
+                        // Lấy lý do cuối cùng (nếu chọn 'Khác' thì lấy từ window._otherReason)
+                        const finalReason = returnReason === "Khác" ? (window as any)._otherReason : returnReason;
+
+                        // Gửi đầy đủ thông tin định danh để Socket.io Backend nhận được
+                        returnMutation.mutate({
+                            idPhieuThuoc: actionDrug.idPhieuThuoc,
+                            quantity: returnQuantity,
+                            reason: finalReason,
+                            tenBenhNhan: tenBenhNhan || "N/A", 
+                            maBenhNhan: maBenhNhan || "N/A",   
+                            tenThuoc: actionDrug.ten,         
+                        });
+                    }}
                 />
             )}
         </div>
