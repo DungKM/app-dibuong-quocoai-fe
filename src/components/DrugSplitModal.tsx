@@ -9,7 +9,6 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
 
     return createPortal(
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            {/* Lớp nền mờ phủ kín toàn bộ, kể cả Header */}
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedDrug(null)} />
             
             <div className="relative bg-white w-full max-w-lg rounded-[40px] p-8 shadow-2xl animate-in zoom-in duration-200">
@@ -67,6 +66,6 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
                 </div>
             </div>
         </div>,
-        document.body // ✅ Đưa hẳn ra ngoài body để đè lên Header
+        document.body 
     );
 };
