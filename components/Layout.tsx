@@ -7,7 +7,6 @@ import { useAuth } from '@/context/AuthContext';
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
-  console.log(user);
   if (!user) return null;
 
   const isAdmin = user.role === UserRole.ADMIN;

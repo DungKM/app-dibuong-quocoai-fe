@@ -40,11 +40,10 @@ export const Layout: React.FC = () => {
 
     return () => socket.disconnect();
   }, [user?.idKhoa]);
-  // Logic phân quyền (giữ nguyên của bạn)
+
   const isAdmin = user.role === UserRole.ADMIN;
   const isDoctor = user.role === UserRole.DOCTOR;
   const isNurse = user.role === UserRole.NURSE;
-  console.log(user);
 
   const getRoleLabel = () => {
     if (isAdmin) return 'Quản trị viên';
@@ -156,9 +155,6 @@ export const Layout: React.FC = () => {
                               <p className="text-[11px] text-slate-500 mt-1 font-medium italic">
                                 Trả {n.soLuongTra} {n.tenThuoc}
                               </p>
-                              {/* <p className="text-[9px] text-slate-300 font-bold mt-2 uppercase italic tracking-tighter">
-                                Vừa xong • Khoa {user.tenKhoa}
-                              </p> */}
                             </div>
                           </div>
                         ))
@@ -177,8 +173,8 @@ export const Layout: React.FC = () => {
             {/* Profile */}
             <Link to="/profile" className="flex items-center gap-2 border-l pl-4 border-slate-200 group">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-800 group-hover:text-primary transition">{user.name}</p>
-                <p className={`text-[10px] ${getRoleColorClass()} font-black uppercase italic tracking-widest`}>{getRoleLabel()}</p>
+                <p className="text-sm font-semibold text-slate-800 group-hover:text-primary transition">{user.username}</p>
+                {/* <p className={`text-[10px] ${getRoleColorClass()} font-black uppercase italic tracking-widest`}>{getRoleLabel()}</p> */}
               </div>
               <img src={avatar} className="w-8 h-8 rounded-full border border-slate-200 group-hover:border-primary transition" alt="Avatar" />
             </Link>

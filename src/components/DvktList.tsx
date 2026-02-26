@@ -4,7 +4,7 @@ import { getDvktByPhieuKham } from "@/services/dibuong.api";
 import type { DvktItem } from "@/types/dibuong";
 
 type Props = {
-  idPhieuKham: string | null; // selectedEncounterId
+  idPhieuKham: string | null; 
 };
 
 const STATUS_STYLE: Record<string, { cls: string; dot: string }> = {
@@ -26,11 +26,8 @@ function formatDate(iso?: string | null) {
   });
 }
 
-// map IdNhomChiPhi -> tag hiển thị (tạm). Nếu bạn có mapping chuẩn thì thay ở đây.
 function tagFromGroup(idNhomChiPhi?: string | null) {
   if (!idNhomChiPhi) return "DVKT";
-  // ví dụ: nếu backend có nhóm xét nghiệm / CĐHA...
-  // Hiện chưa có tên nhóm, chỉ có Id => để DVKT mặc định
   return "DVKT";
 }
 
