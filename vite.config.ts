@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const BACKEND_URL = 'http://localhost:5000'; // Cổng Backend bạn đang chạy
+  const BACKEND_URL = import.meta.env.VITE_API_BACKEND_AUTH_NODE_URL; // Cổng Backend bạn đang chạy
 
   return {
     define: {
