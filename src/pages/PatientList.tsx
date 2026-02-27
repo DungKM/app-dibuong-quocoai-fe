@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { RoomGrid } from "@/components/RoomSection";
 import { getBuongPhong } from "@/services/dibuong.api";
 import type { BuongPhongResponse } from "@/types/dibuong";
+import { useAuth } from "@/context/AuthContext";
 
 export const PatientList: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const ID_KHOA = "41CA5C91-F449-404F-B37B-00EFE98B8375";
-
+    const { user } = useAuth();
+    const ID_KHOA = user?.idHis || "";
   const { data, isLoading } = useQuery<BuongPhongResponse>({
     queryKey: ["buongphong", ID_KHOA],
     queryFn: () => getBuongPhong(ID_KHOA),

@@ -7,10 +7,13 @@ export type LoginResponse = {
   username?: string;  
   idKhoa?: string | null;
   tenKhoa?: string | null;
+  idHis?: string | null;
 };
 
 export type AuthUser = {
   username: string;
   role: Role;
   idKhoa?: string | null;
+  tenKhoa?: string | null;
+  idHis: string | null;
 };
