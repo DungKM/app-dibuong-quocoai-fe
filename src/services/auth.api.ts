@@ -65,8 +65,20 @@ export const authApi = {
     });
 
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Login failed" }));
-      throw new Error(error.message);
+      let message = "Đăng nhập thất bại";
+      const errorBody = await res.json().catch(() => null);
+      const serverMsg = errorBody?.message as string | undefined;
+
+      if (res.status === 400) message = "Vui lòng nhập tên đăng nhập và mật khẩu.";
+      if (res.status === 401) message = "Tên đăng nhập hoặc mật khẩu không đúng.";
+      if (res.status === 403) message = "Tài khoản chưa được cấp quyền truy cập.";
+      if (res.status >= 500) message = "Hệ thống đang bận. Vui lòng thử lại sau.";
+
+      if (serverMsg && !/invalid credentials/i.test(serverMsg)) {
+        message = serverMsg;
+      }
+
+      throw new Error(message);
     }
 
     const data: LoginResponse = await res.json();
@@ -133,7 +145,7 @@ export const authApi = {
     }
     return await res.json();
   },
-  
+
   createUser: async (payload: any) => {
     const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users`, {
       method: "POST",
