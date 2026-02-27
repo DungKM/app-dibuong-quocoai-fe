@@ -10,6 +10,7 @@ import { env } from "@/config/env";
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNoti, setShowNoti] = useState(false);
 
@@ -23,13 +24,10 @@ export const Layout: React.FC = () => {
     });
 
     socket.on("connect", () => {
-      console.log("✅ SOCKET connected:", socket.id);
-      console.log("✅ JOIN khoa:", user.idKhoa);
       socket.emit("join_khoa", user.idKhoa);
     });
 
     socket.on("new_notification", (data) => {
-      console.log("🔔 new_notification:", data);
       setNotifications((prev) => [data, ...prev]);
       toast.success(`BN ${data.tenBenhNhan} trả thuốc`);
     });
@@ -44,19 +42,6 @@ export const Layout: React.FC = () => {
   const isAdmin = user.role === UserRole.ADMIN;
   const isDoctor = user.role === UserRole.DOCTOR;
   const isNurse = user.role === UserRole.NURSE;
-
-  const getRoleLabel = () => {
-    if (isAdmin) return 'Quản trị viên';
-    if (isDoctor) return 'Bác sĩ';
-    if (isNurse) return 'Điều dưỡng';
-    return 'Nhân viên';
-  };
-
-  const getRoleColorClass = () => {
-    if (isAdmin) return 'text-purple-600';
-    if (isDoctor) return 'text-primary';
-    return 'text-success';
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

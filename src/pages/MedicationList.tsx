@@ -6,12 +6,15 @@ import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/typ
 import { MedicationBedCard } from "@/components/MedicationBedCard";
 import { getMedSplitsByEncounter } from "@/services/medSplit.api";
 import { buildAdvancedShiftStats } from "@/components/buildAdvancedShiftStats";
+import { useAuth } from "@/context/AuthContext";
 
-const KHOA_OPTIONS = [
-  { id: "41CA5C91-F449-404F-B37B-00EFE98B8375", name: "Khoa Nhi" },
-];
 
 export const MedicationList: React.FC = () => {
+  const { user, logout } = useAuth();
+  
+  const KHOA_OPTIONS = [
+    { id: user?.idHis || "", name: user?.tenKhoa || "Khoa" },
+  ];
   const [activeShift, setActiveShift] = useState<ShiftType>(ShiftType.MORNING);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [idKhoa, setIdKhoa] = useState<string>(KHOA_OPTIONS[0].id);
