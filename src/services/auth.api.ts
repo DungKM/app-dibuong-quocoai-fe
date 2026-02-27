@@ -48,7 +48,7 @@ const authenticatedRequest = async (url: string, options: RequestInit) => {
       });
     } catch (refreshError) {
       authStorage.clear();
-      window.location.href = "/login";
+      window.location.href = "/#/login";
       throw new Error("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
     }
   }
