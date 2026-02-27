@@ -101,7 +101,6 @@ export const MedicationDetail: React.FC = () => {
         }
     });
     // Mutation Trả thuốc
-    console.log(actionDrug?.ten);
     const returnMutation = useMutation({
         mutationFn: (data: any) => returnMedication(selectedEncounterId!, data.idPhieuThuoc, data),
         onSuccess: () => {
