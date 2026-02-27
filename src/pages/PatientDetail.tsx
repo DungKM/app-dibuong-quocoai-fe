@@ -134,31 +134,6 @@ export const PatientDetail: React.FC = () => {
             {activeTab === "documents" && (
                <KetQuaDvktBrowser idPhieuKham={selectedEncounterId} baseFileUrl={env.API_BASE_URL} />
             )}
-            {/* OTHER TABS history */}
-            {activeTab === 'history' && (
-                <div className="space-y-6">
-                    <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold text-slate-800 mb-6">Lịch sử chuyển khoa</h3>
-                        <div className="relative border-l-2 border-slate-200 ml-3 space-y-8">
-                            <div className="relative pl-8">
-                                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white bg-blue-500"></div>
-                                <div className="text-xs text-slate-400 mb-1">25/10/2023</div>
-                                <h4 className="font-bold text-slate-800 text-base">Chuyển khoa phòng</h4>
-                                <p className="text-sm text-slate-600 mt-1">Chuyển từ Khoa Khám bệnh sang khoa nội</p>
-                            </div>
-                        </div>
-                        <h3 className="font-bold text-slate-800 mb-6 mt-6">Lịch sử chuyển buồng</h3>
-                        <div className="relative border-l-2 border-slate-200 ml-3 space-y-8">
-                            <div className="relative pl-8">
-                                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white bg-blue-500"></div>
-                                <div className="text-xs text-slate-400 mb-1">25/09/2023</div>
-                                <h4 className="font-bold text-slate-800 text-base">Chuyển buồng</h4>
-                                <p className="text-sm text-slate-600 mt-1">Chuyển từ phòng 401/ giường 201 sang phòng 402/ giường 302</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
             {/* OTHER TABS loadnote */}
             {activeTab === 'loadnote' && (
                 <NoteSection idPhieuKham={selectedEncounterId} />
