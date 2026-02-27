@@ -6,13 +6,39 @@ import avatar from "@/assets/avatar.jpg";
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { env } from "@/config/env";
+import { authStorage } from '@/services/auth.api';
+import { useNavigate } from "react-router-dom";
 
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showNoti, setShowNoti] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!user?.idKhoa) return;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`,
+          {
+            headers: {
+              Authorization: `Bearer ${authStorage.getAccessToken()}`,
+            },
+          }
+        );
+
+        const json = await res.json();
+        setNotifications(json.data || []);
+        setUnreadCount(json.unreadCount || 0);
+      } catch (e) {
+        console.log("Load notifications error:", e);
+      }
+    })();
+  }, [user?.idKhoa]);
 
   useEffect(() => {
     if (!user?.idKhoa) return;
@@ -29,6 +55,7 @@ export const Layout: React.FC = () => {
 
     socket.on("new_notification", (data) => {
       setNotifications((prev) => [data, ...prev]);
+      setUnreadCount((c) => c + 1);
       toast.success(`BN ${data.tenBenhNhan} trả thuốc`);
     });
 
@@ -100,15 +127,31 @@ export const Layout: React.FC = () => {
 
           <div className="flex items-center gap-4">
             {/* CHUÔNG THÔNG BÁO */}
-            <div className="relative">
+            <div className="relative overflow-visible">
               <button
-                onClick={() => setShowNoti(!showNoti)}
+                onClick={async (e) => {
+                  e.stopPropagation();
+
+                  const next = !showNoti;
+                  setShowNoti(next);
+
+                  if (next) {
+                    await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/api/notifications/read-all`, {
+                      method: "PATCH",
+                      headers: { Authorization: `Bearer ${authStorage.getAccessToken()}` },
+                    });
+
+                    setUnreadCount(0);
+                    setNotifications((prev) => prev.map((x) => ({ ...x, read: true })));
+                  }
+                }}
+
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all relative ${showNoti ? 'bg-primary text-white' : 'bg-slate-50 text-slate-400'}`}
               >
                 <i className="fa-solid fa-bell text-lg"></i>
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-bounce">
-                    {notifications.length}
+                    {unreadCount}
                   </span>
                 )}
               </button>
@@ -117,10 +160,30 @@ export const Layout: React.FC = () => {
                 <>
                   {/* Overlay để đóng khi nhấn ra ngoài */}
                   <div className="fixed inset-0 z-[55]" onClick={() => setShowNoti(false)} />
-                  <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-slate-200 rounded-[32px] shadow-2xl py-4 z-[60] animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-slate-200 rounded-[32px] shadow-2xl py-4 z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="px-6 pb-3 border-b border-slate-50 flex justify-between items-center text-xs font-black text-slate-400 uppercase tracking-widest">
                       <span>Thông báo</span>
-                      <button onClick={() => setNotifications([])} className="text-primary hover:underline lowercase font-bold">Xóa tất cả</button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`, {
+                              method: "DELETE",
+                              headers: {
+                                Authorization: `Bearer ${authStorage.getAccessToken()}`,
+                              },
+                            });
+
+                            setNotifications([]);
+                            setUnreadCount(0);
+                          } catch (e) {
+                            console.log("Clear notifications error:", e);
+                            toast.error("Không xóa được thông báo");
+                          }
+                        }}
+                        className="text-primary hover:underline lowercase font-bold"
+                      >
+                        Xóa tất cả
+                      </button>
                     </div>
                     <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                       {notifications.length === 0 ? (
@@ -129,16 +192,28 @@ export const Layout: React.FC = () => {
                         </div>
                       ) : (
                         notifications.map((n, idx) => (
-                          <div key={idx} className="px-6 py-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 flex gap-3">
+                          <div key={n._id || idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const raw = n.payload?.url ?? n.url;
+                              if (!raw) return;
+                              const hashIndex = raw.indexOf("#");
+                              let to = hashIndex !== -1 ? raw.slice(hashIndex + 1) : raw;
+                              if (!to.startsWith("/")) to = "/" + to;
+                              window.location.replace(`/#${to}`);
+                              setShowNoti(false);
+                            }}
+                            className="px-6 py-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 flex gap-3">
                             <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 text-sm">
                               <i className="fa-solid fa-pills"></i>
                             </div>
                             <div>
                               <p className="text-xs font-black text-slate-800 uppercase italic">
-                                {n.tenBenhNhan} <span className="text-slate-400 not-italic">#{n.maBenhNhan}</span>
+                                {n.payload?.tenBenhNhan ?? n.tenBenhNhan}{" "}
+                                <span className="text-slate-400 not-italic">#{n.payload?.maBenhNhan ?? n.maBenhNhan}</span>
                               </p>
                               <p className="text-[11px] text-slate-500 mt-1 font-medium italic">
-                                Trả {n.soLuongTra} {n.tenThuoc}
+                                Trả {n.payload?.soLuongTra ?? n.soLuongTra} {n.payload?.tenThuoc ?? n.tenThuoc}
                               </p>
                             </div>
                           </div>
