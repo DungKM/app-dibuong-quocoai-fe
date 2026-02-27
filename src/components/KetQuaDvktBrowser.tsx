@@ -30,13 +30,46 @@ function fileNameFromUrl(url: string) {
     }
 }
 
+async function fetchPdfAsBlobUrl(url: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const res = await fetch(url, { method: "GET", headers });
+
+    if (res.status === 404) {
+        const err = new Error("File không tồn tại hoặc đã bị xoá.");
+        (err as any).status = 404;
+        throw err;
+    }
+
+    if (!res.ok) {
+        const err = new Error(`Không tải được PDF (HTTP ${res.status}).`);
+        (err as any).status = res.status;
+        throw err;
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("pdf")) {
+        const err = new Error("Link trả về không phải PDF (có thể cần đăng nhập).");
+        (err as any).status = 415;
+        throw err;
+    }
+
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+}
+
 export const KetQuaDvktBrowser: React.FC<Props> = ({
     idPhieuKham,
     baseFileUrl = "",
 }) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    // State quản lý Popup xem PDF
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewName, setPreviewName] = useState<string>("");
+    const [previewLoading, setPreviewLoading] = useState(false);
+
+    // để cleanup object url
+    const [objectUrl, setObjectUrl] = useState<string | null>(null);
 
     const { data, isLoading, error } = useQuery<KetQuaDvktItem[]>({
         queryKey: ["ketqua_dvkt", idPhieuKham],
@@ -57,6 +90,7 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
 
             const name = fileNameFromUrl(url);
             const arr = map.get(it.TenDVKT)!;
+
             if (!arr.some((f) => f.url === url)) arr.push({ url, name });
         });
 
@@ -69,6 +103,47 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
     if (!idPhieuKham) return <div className="p-10 text-center text-slate-400 font-bold bg-white rounded-3xl border border-slate-200">Chọn một lần khám để xem hồ sơ.</div>;
     if (isLoading) return <div className="p-10 text-center text-slate-400 font-bold bg-white rounded-3xl border border-slate-200">Đang tải hồ sơ...</div>;
     if (error) return <div className="p-6 bg-red-50 rounded-3xl border border-red-100 text-red-700 font-bold font-bold">Lỗi tải hồ sơ.</div>;
+
+    const TOKEN = import.meta.env.VITE_API_TOKEN as string;
+
+    const openPreview = async (url: string) => {
+        setPreviewLoading(true);
+
+        try {
+            // cleanup objectUrl cũ
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+
+            const TOKEN = import.meta.env.VITE_API_TOKEN as string; // hoặc token user
+            const blobUrl = await fetchPdfAsBlobUrl(url, TOKEN);
+
+            setObjectUrl(blobUrl);
+            setPreviewUrl(blobUrl);
+            setPreviewName(fileNameFromUrl(url));
+        } catch (e: any) {
+            console.error(e);
+
+            // ✅ thông báo gọn cho 404
+            if (e?.status === 404) {
+                alert("File không tồn tại hoặc đã bị xoá.");
+            } else {
+                alert(e?.message || "Không mở được PDF.");
+            }
+
+            // ✅ đảm bảo không mở modal khi lỗi
+            setPreviewUrl(null);
+            setPreviewName("");
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    const closePreview = () => {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        setObjectUrl(null);
+        setPreviewUrl(null);
+        setPreviewName("");
+        setPreviewLoading(false);
+    };
 
     return (
         <div className="space-y-6">
@@ -84,9 +159,8 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
                                 <li
                                     key={`${g.title}-${idx}`}
                                     onClick={() => setSelectedIndex(idx)}
-                                    className={`text-sm cursor-pointer px-3 py-2 rounded-lg transition ${
-                                        idx === safeIndex ? "bg-blue-50 text-primary font-bold" : "hover:bg-slate-50 text-slate-600"
-                                    }`}
+                                    className={`text-sm cursor-pointer px-3 py-2 rounded-lg transition ${idx === safeIndex ? "bg-blue-50 text-primary font-bold" : "hover:bg-slate-50 text-slate-600"
+                                        }`}
                                 >
                                     <i className="fa-regular fa-folder mr-2" />
                                     {g.title}
@@ -103,7 +177,7 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
                         {(selected?.files ?? []).map((f) => (
                             <div
                                 key={f.url}
-                                onClick={() => setPreviewUrl(f.url)} // Nhấn vào cả dòng để xem
+                                onClick={() => openPreview(f.url)}
                                 className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-blue-50/50 hover:border-blue-200 cursor-pointer transition group"
                             >
                                 <div className="flex items-center gap-3 overflow-hidden">
@@ -116,17 +190,17 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                     <button className="text-slate-400 group-hover:text-primary p-2">
+                                    <button className="text-slate-400 group-hover:text-primary p-2">
                                         <i className="fa-solid fa-eye" />
-                                     </button>
-                                     <a 
-                                        href={f.url} 
-                                        download 
-                                        onClick={(e) => e.stopPropagation()} // Không mở popup khi bấm download
+                                    </button>
+                                    <a
+                                        href={f.url}
+                                        download
+                                        onClick={(e) => e.stopPropagation()}
                                         className="text-slate-400 hover:text-green-600 p-2"
-                                     >
+                                    >
                                         <i className="fa-solid fa-download" />
-                                     </a>
+                                    </a>
                                 </div>
                             </div>
                         ))}
@@ -143,33 +217,41 @@ export const KetQuaDvktBrowser: React.FC<Props> = ({
                             <div className="flex items-center gap-3">
                                 <i className="fa-solid fa-file-pdf text-red-500 text-xl" />
                                 <span className="font-bold text-slate-800 truncate max-w-md">
-                                    {fileNameFromUrl(previewUrl)}
+                                    {previewName}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <a 
-                                    href={previewUrl} 
-                                    target="_blank" 
+                                <a
+                                    href={previewUrl ?? undefined}
+                                    target="_blank"
                                     className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition"
+                                    rel="noreferrer"
                                 >
                                     Mở tab mới
                                 </a>
-                                <button 
-                                    onClick={() => setPreviewUrl(null)}
+                                <button
+                                    onClick={closePreview}
                                     className="w-10 h-10 flex items-center justify-center bg-slate-200 hover:bg-red-500 hover:text-white rounded-full transition"
                                 >
                                     <i className="fa-solid fa-xmark" />
                                 </button>
                             </div>
                         </div>
-                        
-                        {/* Nội dung PDF */}
+
                         <div className="flex-1 bg-slate-100">
-                            <iframe
-                                src={`${previewUrl}#toolbar=0`}
-                                className="w-full h-full"
-                                title="PDF Preview"
-                            />
+                            {previewLoading ? (
+                                <div className="w-full h-full flex items-center justify-center text-slate-600 font-bold">
+                                    Đang tải PDF...
+                                </div>
+                            ) : (
+                                previewUrl && (
+                                    <iframe
+                                        src={`${previewUrl}#toolbar=0`}
+                                        className="w-full h-full"
+                                        title="PDF Preview"
+                                    />
+                                )
+                            )}
                         </div>
                     </div>
                 </div>
