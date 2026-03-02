@@ -1,6 +1,4 @@
 
-import { aiService } from '@/services/ai';
-import { useQuery } from '@tanstack/react-query';
 import { DvktList } from '@/components/DvktList';
 import { VitalsTable } from '@/components/VitalsTable';
 import { EncounterList } from '@/components/EncounterList';
@@ -8,11 +6,14 @@ import { MedicationList } from '@/components/MedicationList';
 import { SignatureCapture } from '@/components/SignatureCapture';
 import { ThongTinVaoVienCard } from '@/components/ThongTinVaoVienCard';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { EncounterTimeline } from '@/components/EncounterTimeline';
 import { KetQuaDvktBrowser } from '@/components/KetQuaDvktBrowser';
 import { env } from '@/config/env';
 import { NoteSection } from '@/components/NoteSection';
+import { AIAssistant } from '@/components/AIAssistant';
+import { ThongTinVaoVienItem } from '@/types/dibuong';
+import { getThongTinVaoVien } from '@/services/dibuong.api';
 
 export const PatientDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -28,9 +29,17 @@ export const PatientDetail: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'record' | 'vitals' | 'meds' | 'services' | 'notes'>('record');
     const [showSignature, setShowSignature] = useState<{ orderId: string, type: 'MED' | 'SERVICE' } | null>(null);
 
+
+      const [item, setItem] = useState<ThongTinVaoVienItem | null>(null);
+    
+      useEffect(() => {
+        if (!IdBenhAn?.trim()) return;
+        getThongTinVaoVien(IdBenhAn.trim()).then((res) => setItem(res[0] ?? null));
+      }, [IdBenhAn]);
+
     return (
         <div className="pb-20 relative">
-            {/* <AIAssistant patient={patient} record={record} vitals={vitals} orders={orders} notes={notes} /> */}
+            <AIAssistant patientName={tenBenhNhan} notes={item?.notes} />
 
             {showSignature && <SignatureCapture title="Xác nhận" onSave={() => setShowSignature(null)} onCancel={() => setShowSignature(null)} />}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-6 sticky top-16 sm:top-20 z-30">
