@@ -4,6 +4,7 @@ import { getThongTinVaoVien } from "@/services/dibuong.api";
 
 export const ThongTinVaoVienCard = ({ idBenhAn }: { idBenhAn: string }) =>{
   const [item, setItem] = useState<ThongTinVaoVienItem | null>(null);
+  
 
   useEffect(() => {
     if (!idBenhAn?.trim()) return;
