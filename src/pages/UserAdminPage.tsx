@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/services/auth.api";
 import { UserModal } from "@/components/UserModal";
 import { ResetPasswordModal } from "@/components/ResetPasswordModal";
+import * as XLSX from "xlsx";
 
 export const UserAdminPage = () => {
   const queryClient = useQueryClient();
@@ -10,22 +11,81 @@ export const UserAdminPage = () => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [resetUser, setResetUser] = useState<any>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  // Lấy thêm danh sách khoa phòng để truyền vào Modal
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 20; // đổi tuỳ ý
   const { data: departments } = useQuery({
     queryKey: ["departments"],
     queryFn: authApi.getDepartments
   });
-  // 1. Lấy danh sách user từ API
+
   const { data: users, isLoading, isError } = useQuery({
     queryKey: ["users"],
     queryFn: authApi.getUsers
   });
 
-  // 2. Xử lý đổi trạng thái (Sử dụng _id cho MongoDB)
   const statusMutation = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => authApi.updateStatus(id, active),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] })
   });
+
+
+
+  const importMutation = useMutation({
+    mutationFn: (payload: any[]) => authApi.importUsers(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] })
+  });
+
+  const handleImportExcel = async (file: File) => {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: "" }) as any[];
+
+    const payload = rows
+      .map((r) => ({
+        username: String(r.username || r.UserName || "").trim(),
+        idKhoa: String(r.idKhoa || "").trim() || null,
+        role: String(r.role || "").trim().toLowerCase(),
+        password: "admin123",
+        isActive: true
+      }))
+      .filter((x) => x.username);
+
+    const validRoles = new Set(["admin", "doctor", "nurse"]);
+    const bad = payload.filter((x) => !validRoles.has(x.role));
+    if (bad.length) {
+      alert(`Role không hợp lệ ở ${bad.length} dòng. Role chỉ nhận: admin/doctor/nurse`);
+      return;
+    }
+
+    importMutation.mutate(payload);
+  };
+
+  const normalized = (s: any) => String(s ?? "").toLowerCase().trim();
+
+  const filteredUsers = (users || []).filter((u: any) => {
+    const q = normalized(search);
+    if (!q) return true;
+
+    return (
+      normalized(u.username).includes(q) ||
+      normalized(u.fullName).includes(q) ||
+      normalized(u.role).includes(q) ||
+      normalized(u.idKhoa?.name).includes(q) ||
+      normalized(u.idKhoa?.idHis).includes(q)
+    );
+  });
+
+  const total = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // Nếu search làm giảm số trang, kéo page về hợp lệ
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const end = start + pageSize;
+  const pagedUsers = filteredUsers.slice(start, end);
 
   if (isLoading) return (
     <div className="p-20 text-center font-black animate-pulse text-sky-400 uppercase tracking-widest">
@@ -57,6 +117,48 @@ export const UserAdminPage = () => {
         >
           <i className="fa-solid fa-plus"></i> THÊM TÀI KHOẢN
         </button>
+
+        <label className="w-full md:w-auto bg-white border border-slate-200 text-slate-700 px-8 py-4 rounded-2xl font-black shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer">
+          <i className="fa-solid fa-file-import"></i> IMPORT EXCEL
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportExcel(f);
+              e.currentTarget.value = ""; // để chọn lại cùng file vẫn trigger
+            }}
+          />
+        </label>
+
+
+      </div>
+      <div className="w-full md:w-[420px]">
+        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+          <i className="fa-solid fa-magnifying-glass text-slate-400"></i>
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Tìm theo username, role, tên khoa, idHis..."
+            className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder:text-slate-400"
+          />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              className="text-slate-400 hover:text-slate-700"
+              title="Xoá"
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* --- DANH SÁCH DẠNG BẢNG --- */}
@@ -73,7 +175,7 @@ export const UserAdminPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {users?.map((user: any) => (
+              {pagedUsers?.map((user: any) => (
                 <tr key={user._id || user.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4 text-sm font-mono text-slate-400">@{user.username}</td>
                   <td className="px-6 py-4">
@@ -123,11 +225,59 @@ export const UserAdminPage = () => {
           </table>
         </div>
 
-        <div className="p-6 bg-slate-50/30 border-t border-slate-50 flex justify-between items-center">
-          <p className="text-[11px] font-bold text-slate-400 uppercase">Hiển thị {users?.length || 0} kết quả</p>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-400 cursor-not-allowed">Trình trước</button>
-            <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:border-primary">Trang sau</button>
+        <div className="p-6 bg-slate-50/30 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-3">
+          <p className="text-[11px] font-bold text-slate-400 uppercase">
+            Hiển thị {total === 0 ? 0 : start + 1}-{Math.min(end, total)} / {total} kết quả
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(1)}
+              disabled={safePage === 1}
+              className={`px-4 py-2 bg-white border rounded-xl text-xs font-black ${safePage === 1
+                  ? "border-slate-200 text-slate-300 cursor-not-allowed"
+                  : "border-slate-200 text-slate-600 hover:border-primary"
+                }`}
+            >
+              Đầu
+            </button>
+
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              className={`px-4 py-2 bg-white border rounded-xl text-xs font-black ${safePage === 1
+                  ? "border-slate-200 text-slate-300 cursor-not-allowed"
+                  : "border-slate-200 text-slate-600 hover:border-primary"
+                }`}
+            >
+              Trình trước
+            </button>
+
+            <span className="px-3 text-xs font-black text-slate-500">
+              Trang {safePage}/{totalPages}
+            </span>
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              className={`px-4 py-2 bg-white border rounded-xl text-xs font-black ${safePage === totalPages
+                  ? "border-slate-200 text-slate-300 cursor-not-allowed"
+                  : "border-slate-200 text-slate-600 hover:border-primary"
+                }`}
+            >
+              Trang sau
+            </button>
+
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={safePage === totalPages}
+              className={`px-4 py-2 bg-white border rounded-xl text-xs font-black ${safePage === totalPages
+                  ? "border-slate-200 text-slate-300 cursor-not-allowed"
+                  : "border-slate-200 text-slate-600 hover:border-primary"
+                }`}
+            >
+              Cuối
+            </button>
           </div>
         </div>
         <UserModal

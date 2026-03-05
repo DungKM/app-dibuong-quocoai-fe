@@ -221,4 +221,18 @@ export const authApi = {
     }
     return true;
   },
+
+  importUsers: async (users: any[]) => {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/users/import`, {
+      method: "POST",
+      body: JSON.stringify({ users }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => null);
+      throw new Error(error?.message || "Lỗi khi import Excel");
+    }
+
+    return await res.json();
+  },
 };
