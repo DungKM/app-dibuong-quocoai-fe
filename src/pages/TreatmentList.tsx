@@ -4,15 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { RoomGrid } from "@/components/RoomSection";
 import { getBuongPhong } from "@/services/dibuong.api";
 import type { BuongPhongResponse } from "@/types/dibuong";
+import { useAuth } from "@/context/AuthContext";
 
 // TODO: nếu có API danh sách khoa thì thay mảng này bằng data query
-const KHOA_OPTIONS = [
-  { id: "41CA5C91-F449-404F-B37B-00EFE98B8375", name: "Khoa (demo)" },
-  // { id: "...", name: "Khoa Nội" },
-  // { id: "...", name: "Khoa Sản" },
-];
+
 
 export const TreatmentList: React.FC = () => {
+  const { user, logout } = useAuth();
+
+  const KHOA_OPTIONS = [
+    { id: user?.idHis || "", name: user?.tenKhoa || "Khoa" },
+  ];
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [idKhoa, setIdKhoa] = useState<string>(KHOA_OPTIONS[0].id);
