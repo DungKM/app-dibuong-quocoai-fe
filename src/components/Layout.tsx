@@ -8,6 +8,7 @@ import { io } from 'socket.io-client';
 import { env } from "@/config/env";
 import { authStorage } from '@/services/auth.api';
 import { useNavigate } from "react-router-dom";
+import { ReturnNotificationsModal } from "@/components/ReturnNotificationsModal";
 
 export const Layout: React.FC = () => {
   const location = useLocation();
@@ -16,7 +17,9 @@ export const Layout: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNoti, setShowNoti] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const navigate = useNavigate();
+
   useEffect(() => {
     if (!user?.idKhoa) return;
 
@@ -163,27 +166,39 @@ export const Layout: React.FC = () => {
                   <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-slate-200 rounded-[32px] shadow-2xl py-4 z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="px-6 pb-3 border-b border-slate-50 flex justify-between items-center text-xs font-black text-slate-400 uppercase tracking-widest">
                       <span>Thông báo</span>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`, {
-                              method: "DELETE",
-                              headers: {
-                                Authorization: `Bearer ${authStorage.getAccessToken()}`,
-                              },
-                            });
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowReturnModal(true);
+                          }}
+                          className="text-primary hover:underline font-bold normal-case"
+                        >
+                          Xem tất cả
+                        </button>
 
-                            setNotifications([]);
-                            setUnreadCount(0);
-                          } catch (e) {
-                            console.log("Clear notifications error:", e);
-                            toast.error("Không xóa được thông báo");
-                          }
-                        }}
-                        className="text-primary hover:underline lowercase font-bold"
-                      >
-                        Xóa tất cả
-                      </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`, {
+                                method: "DELETE",
+                                headers: {
+                                  Authorization: `Bearer ${authStorage.getAccessToken()}`,
+                                },
+                              });
+
+                              setNotifications([]);
+                              setUnreadCount(0);
+                            } catch (e) {
+                              console.log("Clear notifications error:", e);
+                              toast.error("Không xóa được thông báo");
+                            }
+                          }}
+                          className="text-primary hover:underline lowercase font-bold"
+                        >
+                          Xóa tất cả
+                        </button>
+                      </div>
                     </div>
                     <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                       {notifications.length === 0 ? (
@@ -224,7 +239,10 @@ export const Layout: React.FC = () => {
                 </>
               )}
             </div>
-
+            <ReturnNotificationsModal
+              open={showReturnModal}
+              onClose={() => setShowReturnModal(false)}
+            />
             {/* Đăng xuất */}
             <button onClick={logout} className="text-xs font-bold px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100">
               <i className="fa-solid fa-right-from-bracket mr-1"></i>Đăng xuất

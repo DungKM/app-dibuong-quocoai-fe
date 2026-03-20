@@ -87,6 +87,7 @@ export function returnMedication(
     tenBenhNhan: string;
     maBenhNhan: string;
     tenThuoc: string;
+    idBenhAn: string;
   }
 ) {
   return requestNode(

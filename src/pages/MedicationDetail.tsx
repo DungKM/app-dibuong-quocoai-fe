@@ -34,7 +34,8 @@ export const MedicationDetail: React.FC = () => {
     const maBenhNhan = qs.get("maBenhNhan") ?? "";
     const tenBenhNhan = qs.get("tenBenhNhan") ?? "";
 
-    const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(null);
+    const initialEncounterId = searchParams.get("idPhieuKham");
+    const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(initialEncounterId);
 
     const initialShift = (searchParams.get("shift") as ShiftType) || ShiftType.MORNING;
     const [activeShift, setActiveShift] = useState<ShiftType>(initialShift);
@@ -340,6 +341,7 @@ export const MedicationDetail: React.FC = () => {
                             tenBenhNhan: tenBenhNhan || "N/A",
                             maBenhNhan: maBenhNhan || "N/A",
                             tenThuoc: actionDrug.ten,
+                            idBenhAn: IdBenhAn,
                         });
                     }}
                 />
