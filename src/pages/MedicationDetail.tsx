@@ -342,6 +342,7 @@ export const MedicationDetail: React.FC = () => {
                             maBenhNhan: maBenhNhan || "N/A",
                             tenThuoc: actionDrug.ten,
                             idBenhAn: IdBenhAn,
+                            shift: activeShift,
                         });
                     }}
                 />

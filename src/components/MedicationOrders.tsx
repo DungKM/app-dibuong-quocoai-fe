@@ -7,7 +7,11 @@ import { ShiftType } from "@/types/dibuong";
 interface MedSplitInfo {
   splits: SplitQty;
   status: string;
-  returnHistory?: Array<{ quantity: number; reason: string }>;
+  returnHistory?: Array<{
+    quantity: number;
+    reason: string;
+    shift?: "MORNING" | "NOON" | "AFTERNOON" | "NIGHT";
+  }>;
 }
 
 type Props = {
@@ -37,7 +41,10 @@ export const MedicationOrders: React.FC<Props> = ({
       const idPhieuThuoc = String(it.IdPhieuThuoc);
       const info = splitMap?.[idPhieuThuoc];
       const qtyInShift = info?.splits ? Number(info.splits[key] ?? 0) : 0;
-      const totalReturned = info?.returnHistory?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+      const totalReturned =
+        info?.returnHistory?.reduce((sum, item) => {
+          return item.shift === shift ? sum + item.quantity : sum;
+        }, 0) ?? 0;
       const availableQty = Math.max(0, qtyInShift - totalReturned);
       const hasBeenSplit = !!info;
       const currentStatus = info?.status || "Chờ dùng thuốc";
@@ -60,35 +67,33 @@ export const MedicationOrders: React.FC<Props> = ({
   return (
     <div className="space-y-4 mx-4 pb-10">
       {splitLoading && <div className="text-[10px] font-black text-primary animate-pulse px-4 uppercase tracking-widest">Đang đồng bộ dữ liệu...</div>}
-       {list.length === 0 && (
-          <div className="text-center text-slate-400 italic text-sm font-black uppercase tracking-widest py-10">
-            {filterTab === "PENDING" ? "Chưa có thuốc nào được chia ca" : "Không có thuốc nào đã được chia ca"}
-          </div>
-        )
-       }
+      {list.length === 0 && (
+        <div className="text-center text-slate-400 italic text-sm font-black uppercase tracking-widest py-10">
+          {filterTab === "PENDING" ? "Chưa có thuốc nào được chia ca" : "Không có thuốc nào đã được chia ca"}
+        </div>
+      )
+      }
       {list.map(({ raw: it, idPhieuThuoc, qtyInShift, availableQty, totalReturned, hasBeenSplit, currentStatus }) => {
         const canAction = availableQty > 0 && currentStatus !== "Đã dùng thuốc";
         return (
-          <div key={idPhieuThuoc} className={`relative rounded-[32px] border transition-all duration-300 ${
-            hasBeenSplit && filterTab === "PENDING" ? "bg-[#f8fdfb] border-[#e2f3ee]" : "bg-white border-slate-100 shadow-sm"
-          }`}>
+          <div key={idPhieuThuoc} className={`relative rounded-[32px] border transition-all duration-300 ${hasBeenSplit && filterTab === "PENDING" ? "bg-[#f8fdfb] border-[#e2f3ee]" : "bg-white border-slate-100 shadow-sm"
+            }`}>
             <div className="p-6">
               <div className="flex justify-between items-start gap-4 mb-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-xl font-black text-[#1a202c] leading-tight">{it.Ten}</h3>
                     {filterTab === "COMPLETED" && (
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${
-                        currentStatus === "Đã dùng thuốc" ? "bg-emerald-500 text-white" :
-                        availableQty === 0 ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
-                      }`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${currentStatus === "Đã dùng thuốc" ? "bg-emerald-500 text-white" :
+                          availableQty === 0 ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
+                        }`}>
                         {availableQty === 0 && currentStatus !== "Đã dùng thuốc" ? "Đã trả hết" : currentStatus}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-slate-400 font-bold text-[11px]">
-                     <i className="fa-solid fa-layer-group opacity-40"></i>
-                     <span>Tổng đơn: {it.SoLuong} {it.DonVi}</span>
+                    <i className="fa-solid fa-layer-group opacity-40"></i>
+                    <span>Tổng đơn: {it.SoLuong} {it.DonVi}</span>
                   </div>
                 </div>
 
@@ -96,11 +101,10 @@ export const MedicationOrders: React.FC<Props> = ({
                 {filterTab === "PENDING" && (
                   <button
                     onClick={() => onPickDrug({ idPhieuThuoc: it.IdPhieuThuoc, ten: it.Ten, maxQty: it.SoLuong ?? 0, lieuDung: it.LieuDung ?? "" })}
-                    className={`shrink-0 flex flex-col items-center justify-center gap-1 h-16 w-24 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                      hasBeenSplit 
-                      ? "bg-white border border-slate-200 text-slate-500 shadow-sm" 
-                      : "bg-[#0f172a] text-white shadow-xl shadow-slate-200"
-                    }`}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-1 h-16 w-24 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${hasBeenSplit
+                        ? "bg-white border border-slate-200 text-slate-500 shadow-sm"
+                        : "bg-[#0f172a] text-white shadow-xl shadow-slate-200"
+                      }`}
                   >
                     <i className={`fa-solid ${hasBeenSplit ? 'fa-pen-to-square' : 'fa-plus-circle'} text-lg`}></i>
                     {hasBeenSplit ? "SỬA CA" : "CHIA NGAY"}
@@ -118,13 +122,13 @@ export const MedicationOrders: React.FC<Props> = ({
               </div>
               {filterTab === "COMPLETED" && (
                 <div className="mt-4 pt-4 border-t border-slate-50">
-                   <div className="flex gap-2 flex-wrap mb-4">
-                      <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase border border-slate-200/50">Ca này: {qtyInShift}</span>
-                      {totalReturned > 0 && <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase border border-rose-100">Đã trả: {totalReturned}</span>}
-                      <span className="px-3 py-1 bg-primary text-white rounded-xl text-[10px] font-black uppercase shadow-sm">Còn lại: {availableQty} {it.DonVi}</span>
-                   </div>
+                  <div className="flex gap-2 flex-wrap mb-4">
+                    <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase border border-slate-200/50">Ca này: {qtyInShift}</span>
+                    {totalReturned > 0 && <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase border border-rose-100">Đã trả: {totalReturned}</span>}
+                    <span className="px-3 py-1 bg-primary text-white rounded-xl text-[10px] font-black uppercase shadow-sm">Còn lại: {availableQty} {it.DonVi}</span>
+                  </div>
 
-                   <div className="flex gap-2">
+                  <div className="flex gap-2">
                     {canAction ? (
                       <>
                         <button
@@ -145,7 +149,7 @@ export const MedicationOrders: React.FC<Props> = ({
                         {availableQty === 0 && currentStatus !== "Đã dùng thuốc" ? "ĐÃ XỬ LÝ TRẢ HẾT" : `TRẠNG THÁI: ${currentStatus}`}
                       </div>
                     )}
-                   </div>
+                  </div>
                 </div>
               )}
             </div>

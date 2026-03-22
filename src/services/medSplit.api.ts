@@ -88,6 +88,7 @@ export function returnMedication(
     maBenhNhan: string;
     tenThuoc: string;
     idBenhAn: string;
+    shift: "MORNING" | "NOON" | "AFTERNOON" | "NIGHT";
   }
 ) {
   return requestNode(
