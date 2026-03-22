@@ -11,6 +11,10 @@ import { DrugSplitModal } from "@/components/DrugSplitModal";
 import { CameraScannerModal } from "@/components/CameraScannerModal";
 import { DrugActionModal } from "@/components/DrugActionModal";
 import toast from "react-hot-toast";
+import { autoSplitAllMeds } from "@/services/medSplit.api";
+
+import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
+
 type TabType = "PENDING" | "COMPLETED";
 
 const ZERO: SplitQty = { MORNING: 0, NOON: 0, AFTERNOON: 0, NIGHT: 0 };
@@ -30,7 +34,8 @@ export const MedicationDetail: React.FC = () => {
     const maBenhNhan = qs.get("maBenhNhan") ?? "";
     const tenBenhNhan = qs.get("tenBenhNhan") ?? "";
 
-    const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(null);
+    const initialEncounterId = searchParams.get("idPhieuKham");
+    const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(initialEncounterId);
 
     const initialShift = (searchParams.get("shift") as ShiftType) || ShiftType.MORNING;
     const [activeShift, setActiveShift] = useState<ShiftType>(initialShift);
@@ -100,6 +105,11 @@ export const MedicationDetail: React.FC = () => {
             setActionDrug(null);
         }
     });
+    const { data: donThuocData } = useQuery({
+        queryKey: ["donthuoc", selectedEncounterId],
+        enabled: !!selectedEncounterId,
+        queryFn: () => getDonThuocByPhieuKham(selectedEncounterId!),
+    });
     // Mutation Trả thuốc
     const returnMutation = useMutation({
         mutationFn: (data: any) => returnMedication(selectedEncounterId!, data.idPhieuThuoc, data),
@@ -129,6 +139,34 @@ export const MedicationDetail: React.FC = () => {
             Number(selectedDrug.splits.NIGHT || 0)
         );
     }, [selectedDrug?.splits]);
+
+    const autoSplitMutation = useMutation({
+        mutationFn: async () => {
+            const items = (donThuocData ?? []).map((item) => ({
+                idPhieuThuoc: String(item.IdPhieuThuoc),
+                tenThuoc: item.Ten || "",
+                lieuDung: item.LieuDung || "",
+                maxQty: Number(item.SoLuong || 0),
+            }));
+
+            return autoSplitAllMeds(selectedEncounterId!, items);
+        },
+        onSuccess: (res: any) => {
+            qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
+
+            const summary = res?.summary || res?.data?.summary;
+
+            toast.success(
+                `Tự động chia xong. OK: ${summary?.autoSuccess ?? 0}, cần kiểm tra: ${summary?.needsReview ?? 0}, lỗi: ${summary?.failed ?? 0}`
+            );
+        },
+        onError: (error: any) => {
+            toast.error(
+                error?.response?.data?.message || error?.message || "Tự động chia ca thất bại"
+            );
+        },
+    });
+
     if (!currentUser) return null;
     return (
         <div className="pb-24 mx-auto space-y-6">
@@ -189,7 +227,14 @@ export const MedicationDetail: React.FC = () => {
                     Đã chia xong
                 </button>
             </div>
-
+            <button
+                onClick={() => autoSplitMutation.mutate()}
+                disabled={!selectedEncounterId || autoSplitMutation.isPending}
+                className="flex-1 md:flex-none bg-primary text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+            >
+                <i className="fa-solid fa-wand-magic-sparkles text-base"></i>
+                {autoSplitMutation.isPending ? "Đang tự động chia..." : "Tự động chia toàn bộ"}
+            </button>
             {activeTab === "COMPLETED" && (
                 <div className="bg-slate-100/50 p-1 rounded-2xl flex gap-1 shadow-inner mx-4 animate-in fade-in duration-300">
                     {[
@@ -293,9 +338,11 @@ export const MedicationDetail: React.FC = () => {
                             idPhieuThuoc: actionDrug.idPhieuThuoc,
                             quantity: returnQuantity,
                             reason: finalReason,
-                            tenBenhNhan: tenBenhNhan || "N/A", 
-                            maBenhNhan: maBenhNhan || "N/A",   
-                            tenThuoc: actionDrug.ten,         
+                            tenBenhNhan: tenBenhNhan || "N/A",
+                            maBenhNhan: maBenhNhan || "N/A",
+                            tenThuoc: actionDrug.ten,
+                            idBenhAn: IdBenhAn,
+                            shift: activeShift,
                         });
                     }}
                 />

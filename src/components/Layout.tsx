@@ -8,6 +8,7 @@ import { io } from 'socket.io-client';
 import { env } from "@/config/env";
 import { authStorage } from '@/services/auth.api';
 import { useNavigate } from "react-router-dom";
+import { ReturnNotificationsModal } from "@/components/ReturnNotificationsModal";
 
 export const Layout: React.FC = () => {
   const location = useLocation();
@@ -16,7 +17,9 @@ export const Layout: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNoti, setShowNoti] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const navigate = useNavigate();
+
   useEffect(() => {
     if (!user?.idKhoa) return;
 
@@ -158,41 +161,75 @@ export const Layout: React.FC = () => {
 
               {showNoti && (
                 <>
-                  {/* Overlay để đóng khi nhấn ra ngoài */}
                   <div className="fixed inset-0 z-[55]" onClick={() => setShowNoti(false)} />
-                  <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-slate-200 rounded-[32px] shadow-2xl py-4 z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="px-6 pb-3 border-b border-slate-50 flex justify-between items-center text-xs font-black text-slate-400 uppercase tracking-widest">
-                      <span>Thông báo</span>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`, {
-                              method: "DELETE",
-                              headers: {
-                                Authorization: `Bearer ${authStorage.getAccessToken()}`,
-                              },
-                            });
 
-                            setNotifications([]);
-                            setUnreadCount(0);
-                          } catch (e) {
-                            console.log("Clear notifications error:", e);
-                            toast.error("Không xóa được thông báo");
-                          }
-                        }}
-                        className="text-primary hover:underline lowercase font-bold"
-                      >
-                        Xóa tất cả
-                      </button>
+                  <div
+                    className="
+        fixed md:absolute
+        top-16 md:top-full
+        left-3 right-3 md:left-auto md:right-0
+        mt-0 md:mt-3
+        w-auto md:w-80
+        bg-white border border-slate-200
+        rounded-[24px] md:rounded-[32px]
+        shadow-2xl
+        py-3 md:py-4
+        z-[60]
+        overflow-hidden
+        animate-in fade-in slide-in-from-top-2
+      "
+                  >
+                    <div className="px-4 md:px-6 pb-3 border-b border-slate-50 flex items-start md:items-center justify-between gap-3">
+                      <span className="text-[11px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
+                        Thông báo
+                      </span>
+
+                      <div className="flex items-center gap-2 md:gap-3 text-[11px] md:text-xs shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowReturnModal(true);
+                            setShowNoti(false);
+                          }}
+                          className="text-primary hover:underline font-bold normal-case whitespace-nowrap"
+                        >
+                          Xem tất cả
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            try {
+                              await fetch(`${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`, {
+                                method: "DELETE",
+                                headers: {
+                                  Authorization: `Bearer ${authStorage.getAccessToken()}`,
+                                },
+                              });
+
+                              setNotifications([]);
+                              setUnreadCount(0);
+                            } catch (e) {
+                              console.log("Clear notifications error:", e);
+                              toast.error("Không xóa được thông báo");
+                            }
+                          }}
+                          className="text-primary hover:underline font-bold whitespace-nowrap"
+                        >
+                          Xóa tất cả
+                        </button>
+                      </div>
                     </div>
-                    <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+
+                    <div className="max-h-[50vh] md:max-h-[400px] overflow-y-auto custom-scrollbar">
                       {notifications.length === 0 ? (
                         <div className="py-10 text-center text-slate-400 font-bold uppercase text-xs">
-                          <i className="fa-solid fa-bell-slash text-2xl mb-2 block"></i> Không có thông báo
+                          <i className="fa-solid fa-bell-slash text-2xl mb-2 block"></i>
+                          Không có thông báo
                         </div>
                       ) : (
                         notifications.map((n, idx) => (
-                          <div key={n._id || idx}
+                          <div
+                            key={n._id || idx}
                             onClick={(e) => {
                               e.stopPropagation();
                               const raw = n.payload?.url ?? n.url;
@@ -203,16 +240,20 @@ export const Layout: React.FC = () => {
                               window.location.replace(`/#${to}`);
                               setShowNoti(false);
                             }}
-                            className="px-6 py-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 flex gap-3">
+                            className="px-4 md:px-6 py-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 flex gap-3"
+                          >
                             <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 text-sm">
                               <i className="fa-solid fa-pills"></i>
                             </div>
-                            <div>
-                              <p className="text-xs font-black text-slate-800 uppercase italic">
+
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-slate-800 uppercase italic break-words">
                                 {n.payload?.tenBenhNhan ?? n.tenBenhNhan}{" "}
-                                <span className="text-slate-400 not-italic">#{n.payload?.maBenhNhan ?? n.maBenhNhan}</span>
+                                <span className="text-slate-400 not-italic">
+                                  #{n.payload?.maBenhNhan ?? n.maBenhNhan}
+                                </span>
                               </p>
-                              <p className="text-[11px] text-slate-500 mt-1 font-medium italic">
+                              <p className="text-[11px] text-slate-500 mt-1 font-medium italic break-words">
                                 Trả {n.payload?.soLuongTra ?? n.soLuongTra} {n.payload?.tenThuoc ?? n.tenThuoc}
                               </p>
                             </div>
@@ -224,7 +265,10 @@ export const Layout: React.FC = () => {
                 </>
               )}
             </div>
-
+            <ReturnNotificationsModal
+              open={showReturnModal}
+              onClose={() => setShowReturnModal(false)}
+            />
             {/* Đăng xuất */}
             <button onClick={logout} className="text-xs font-bold px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100">
               <i className="fa-solid fa-right-from-bracket mr-1"></i>Đăng xuất
