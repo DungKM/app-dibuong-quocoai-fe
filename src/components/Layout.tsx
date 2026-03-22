@@ -97,9 +97,8 @@ export const Layout: React.FC = () => {
                   </div>
                 </div>
               )}
-
               {/* Menu Cấp phát thuốc */}
-              {(isNurse || isAdmin) && (
+              {(isDoctor || isNurse || isAdmin) && (
                 <div className="relative group">
                   <button className={`text-sm font-medium px-3 py-2 rounded-md flex items-center gap-1 ${location.pathname.startsWith('/medication') ? 'text-primary bg-primary/5' : 'text-slate-600'}`}>
                     Cấp phát thuốc <i className="fa-solid fa-chevron-down text-[10px]"></i>
@@ -112,7 +111,6 @@ export const Layout: React.FC = () => {
                   </div>
                 </div>
               )}
-
               {/* Menu Quản trị */}
               {isAdmin && (
                 <div className="relative group">
@@ -129,7 +127,6 @@ export const Layout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* CHUÔNG THÔNG BÁO */}
             <div className="relative overflow-visible">
               <button
                 onClick={async (e) => {
@@ -165,19 +162,19 @@ export const Layout: React.FC = () => {
 
                   <div
                     className="
-        fixed md:absolute
-        top-16 md:top-full
-        left-3 right-3 md:left-auto md:right-0
-        mt-0 md:mt-3
-        w-auto md:w-80
-        bg-white border border-slate-200
-        rounded-[24px] md:rounded-[32px]
-        shadow-2xl
-        py-3 md:py-4
-        z-[60]
-        overflow-hidden
-        animate-in fade-in slide-in-from-top-2
-      "
+                        fixed md:absolute
+                        top-16 md:top-full
+                        left-3 right-3 md:left-auto md:right-0
+                        mt-0 md:mt-3
+                        w-auto md:w-80
+                        bg-white border border-slate-200
+                        rounded-[24px] md:rounded-[32px]
+                        shadow-2xl
+                        py-3 md:py-4
+                        z-[60]
+                        overflow-hidden
+                        animate-in fade-in slide-in-from-top-2
+                      "
                   >
                     <div className="px-4 md:px-6 pb-3 border-b border-slate-50 flex items-start md:items-center justify-between gap-3">
                       <span className="text-[11px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
