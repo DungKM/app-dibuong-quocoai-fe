@@ -77,7 +77,10 @@ export const TreatmentList: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-40">
-        <i className="fa-solid fa-circle-notch fa-spin text-6xl text-primary opacity-20" />
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
