@@ -9,8 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 export const PatientList: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-    const { user } = useAuth();
-    const ID_KHOA = user?.idHis || "";
+  const { user } = useAuth();
+  const ID_KHOA = user?.idHis || "";
   const { data, isLoading } = useQuery<BuongPhongResponse>({
     queryKey: ["buongphong", ID_KHOA],
     queryFn: () => getBuongPhong(ID_KHOA),
@@ -42,7 +42,7 @@ export const PatientList: React.FC = () => {
         return {
           code: giuong.MaGiuong,
           isOccupied: patients.length > 0,
-          patients: patients, 
+          patients: patients,
         };
       }),
     }));
@@ -84,7 +84,10 @@ export const PatientList: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-40">
-        <i className="fa-solid fa-circle-notch fa-spin text-6xl text-primary opacity-20"></i>
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
