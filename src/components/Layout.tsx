@@ -33,12 +33,24 @@ export const Layout: React.FC = () => {
             },
           }
         );
+        if (res.status === 401) {
+          authStorage.clear();
+          window.location.href = "/#/login";
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
 
         const json = await res.json();
+
         setNotifications(json.data || []);
         setUnreadCount(json.unreadCount || 0);
       } catch (e) {
         console.log("Load notifications error:", e);
+        authStorage.clear();
+        window.location.href = "/#/login";
       }
     })();
   }, [user?.idKhoa]);

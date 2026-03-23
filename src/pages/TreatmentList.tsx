@@ -76,11 +76,15 @@ export const TreatmentList: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-40">
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
         <div className="relative w-12 h-12">
           <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
           <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
+
+        <p className="text-gray-500 text-sm animate-pulse">
+          Vui lòng chờ giây lát...
+        </p>
       </div>
     );
   }
