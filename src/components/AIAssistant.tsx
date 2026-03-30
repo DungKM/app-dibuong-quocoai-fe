@@ -5,6 +5,14 @@ import { ProgressNote } from "@/types";
 interface Props {
   patientName: string;
   notes?: ProgressNote[];
+  benhAnInfo?: {
+    lyDoVaoVien?: string;
+    dienBienBenh?: string;
+    tienSuBenh?: string;
+    tienSuBenhGiaDinh?: string;
+    chanDoan?: string;
+    huongDieuTri?: string;
+  };
 }
 
 interface Message {
@@ -14,7 +22,7 @@ interface Message {
   timestamp: Date;
 }
 
-export const AIAssistant: React.FC<Props> = ({ patientName, notes }) => {
+export const AIAssistant: React.FC<Props> = ({ patientName, notes, benhAnInfo }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: "user" | "model"; text: string }[]>([]);
@@ -42,7 +50,7 @@ export const AIAssistant: React.FC<Props> = ({ patientName, notes }) => {
     setIsLoading(true);
 
     try {
-      const responseText = await aiService.chat(patientName, notes, chatHistory, text);
+      const responseText = await aiService.chat(patientName, notes, chatHistory, text, benhAnInfo);
 
       setChatHistory(prev => [
         ...prev,
