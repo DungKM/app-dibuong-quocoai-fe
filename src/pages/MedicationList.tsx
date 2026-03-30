@@ -165,7 +165,19 @@ export const MedicationList: React.FC = () => {
   const isClosed = false;
   const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
   const error = wardError || medsError;
-
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="text-gray-500 text-sm animate-pulse">
+          Vui lòng chờ giây lát...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6 pb-24 px-3 md:px-6 max-w-[1300px] mx-auto">
@@ -179,11 +191,6 @@ export const MedicationList: React.FC = () => {
           <div>
             <h1 className="text-xl md:text-3xl font-black text-slate-900 uppercase leading-none mb-1 tracking-tighter">
               Thực hiện thuốc
-              {isClosed && (
-                <span className="ml-2 bg-red-600 text-white text-[7px] px-2 py-0.5 rounded-full uppercase font-black align-middle shadow-md animate-pulse">
-                  Đã chốt
-                </span>
-              )}
             </h1>
 
             <div className="flex flex-wrap items-center gap-2 text-slate-400 text-[9px] md:text-[10px] font-black uppercase tracking-widest">
