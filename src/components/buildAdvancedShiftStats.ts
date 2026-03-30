@@ -1,4 +1,3 @@
-// buildAdvancedShiftStats.ts
 export function buildAdvancedShiftStats(meds: any[], splits: any) {
   const shifts: any = {
     MORNING: { used: 0, pending: 0, returned: 0, total: 0 },
@@ -15,14 +14,20 @@ export function buildAdvancedShiftStats(meds: any[], splits: any) {
 
     shiftKeys.forEach((k) => {
       const qtyInShift = Number(info?.splits?.[k] ?? 0);
-      
+
       if (qtyInShift > 0) {
         shifts[k].total += qtyInShift;
 
-        if (info?.status === "Đã dùng thuốc") {
+        const isShiftConfirmed = info?.confirmedShifts?.includes(k) ?? false; // 👈 check theo từng ca
+
+        if (isShiftConfirmed) {
           shifts[k].used += qtyInShift;
         } else {
-          const ret = info?.returnHistory?.reduce((s: number, h: any) => s + Number(h.quantity || 0), 0) ?? 0;
+          const ret =
+            info?.returnHistory?.reduce((s: number, h: any) => {
+              return h.shift === k ? s + Number(h.quantity || 0) : s; // 👈 chỉ tính return đúng ca
+            }, 0) ?? 0;
+
           shifts[k].returned += ret;
           shifts[k].pending += Math.max(0, qtyInShift - ret);
         }

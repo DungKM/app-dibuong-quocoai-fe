@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { getBuongPhong, getDonThuocByPhieuKham } from "@/services/dibuong.api";
+import { getBuongPhong, getDonThuocByPhieuKham, getDsLanKham } from "@/services/dibuong.api";
 import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/types/dibuong";
 import { MedicationBedCard } from "@/components/MedicationBedCard";
 import { getMedSplitsByEncounter } from "@/services/medSplit.api";
@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export const MedicationList: React.FC = () => {
   const { user, logout } = useAuth();
-  
+
   const KHOA_OPTIONS = [
     { id: user?.idHis || "", name: user?.tenKhoa || "Khoa" },
   ];
@@ -38,19 +38,58 @@ export const MedicationList: React.FC = () => {
     enabled: !!idKhoa,
   });
 
-  /** 2) Gom list idPhieuKham để call thuốc */
-  const phieuKhamIds = useMemo(() => {
-    const set = new Set<string>();
+  const benhAnIds = useMemo(() => {
+    const list: { idBenhAn: string }[] = [];
     wardData?.DSPhong?.forEach((phong: any) => {
       phong?.DsGiuong?.forEach((giuong: any) => {
         giuong?.DsBenhAn?.forEach((benhAn: any) => {
-          const id = benhAn?.IdPhieuKhamMoiNhat;
-          if (id) set.add(String(id));
+          if (benhAn?.IdBenhAn) {
+            list.push({ idBenhAn: String(benhAn.IdBenhAn) });
+          }
         });
       });
     });
-    return Array.from(set);
+    return list;
   }, [wardData]);
+
+  const { data: lanKhamByBenhAn } = useQuery({
+    queryKey: ["lanKham", benhAnIds, selectedDate],
+    enabled: benhAnIds.length > 0,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        benhAnIds.map(async ({ idBenhAn }) => {
+          const list = await getDsLanKham(idBenhAn);
+          // Filter theo ngày đã chọn
+          const matched = list?.find((lk) =>
+            lk.NgayThucKham?.startsWith(selectedDate)
+          );
+          return [idBenhAn, matched?.Id ?? null] as const;
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+  });
+
+
+  /** 2) Gom list idPhieuKham để call thuốc */
+  const phieuKhamIds = useMemo(() => {
+    if (!lanKhamByBenhAn) {
+      // Fallback về IdPhieuKhamMoiNhat khi chưa load xong
+      const set = new Set<string>();
+      wardData?.DSPhong?.forEach((phong: any) => {
+        phong?.DsGiuong?.forEach((giuong: any) => {
+          giuong?.DsBenhAn?.forEach((benhAn: any) => {
+            const id = benhAn?.IdPhieuKhamMoiNhat;
+            if (id) set.add(String(id));
+          });
+        });
+      });
+      return Array.from(set);
+    }
+
+    // Lấy các idPhieuKham có giá trị (không null)
+    return Object.values(lanKhamByBenhAn).filter(Boolean) as string[];
+  }, [lanKhamByBenhAn, wardData]);
 
   /** 3) Fetch thuốc theo từng idPhieuKham */
   const {
@@ -71,9 +110,10 @@ export const MedicationList: React.FC = () => {
     },
   });
   /** 4) Fetch toàn bộ dữ liệu thực tế (MedShiftSplit) của các idPhieuKham */
-  const { data: allSplitsByVisit, isLoading: isLoadingSplits } = useQuery({
+  const { data: allSplitsByVisit } = useQuery({
     queryKey: ["allMedSplits", phieuKhamIds],
     enabled: phieuKhamIds.length > 0,
+    staleTime: 0, // 👈 thêm dòng này
     queryFn: async () => {
       const entries = await Promise.all(
         phieuKhamIds.map(async (id) => {
@@ -94,7 +134,9 @@ export const MedicationList: React.FC = () => {
         const bedCode = giuong?.MaGiuong ?? "--";
 
         const visits: MedVisitLite[] = (giuong.DsBenhAn ?? []).map((benhAn: any) => {
-          const idPK = String(benhAn?.IdPhieuKhamMoiNhat);
+          const idBenhAn = String(benhAn.IdBenhAn);
+          const idPK = lanKhamByBenhAn?.[idBenhAn]
+            ?? String(benhAn?.IdPhieuKhamMoiNhat);
           const meds = medsByVisit?.[idPK] ?? [];
           const splits = allSplitsByVisit?.[idPK] ?? {};
           const shifts = buildAdvancedShiftStats(meds, splits);
@@ -124,7 +166,6 @@ export const MedicationList: React.FC = () => {
   const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
   const error = wardError || medsError;
 
-  // ... (giữ nguyên phần logic React và useQuery)
 
   return (
     <div className="space-y-4 md:space-y-6 pb-24 px-3 md:px-6 max-w-[1300px] mx-auto">
