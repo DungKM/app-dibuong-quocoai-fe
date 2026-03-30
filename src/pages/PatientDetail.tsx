@@ -30,16 +30,27 @@ export const PatientDetail: React.FC = () => {
     const [showSignature, setShowSignature] = useState<{ orderId: string, type: 'MED' | 'SERVICE' } | null>(null);
 
 
-      const [item, setItem] = useState<ThongTinVaoVienItem | null>(null);
-    
-      useEffect(() => {
+    const [item, setItem] = useState<ThongTinVaoVienItem | null>(null);
+
+    useEffect(() => {
         if (!IdBenhAn?.trim()) return;
         getThongTinVaoVien(IdBenhAn.trim()).then((res) => setItem(res[0] ?? null));
-      }, [IdBenhAn]);
+    }, [IdBenhAn]);
 
     return (
         <div className="pb-20 relative">
-            <AIAssistant patientName={tenBenhNhan} notes={item?.notes} />
+            <AIAssistant
+                patientName={tenBenhNhan}
+                notes={item?.notes}
+                benhAnInfo={{
+                    lyDoVaoVien: item?.LyDoVaoVien,
+                    dienBienBenh: item?.DienBienBenh,
+                    tienSuBenh: item?.TienSuBenh,
+                    tienSuBenhGiaDinh: item?.TienSuBenhGiaDinh,
+                    chanDoan: item?.ChanDoan,
+                    huongDieuTri: item?.HuongDieuTri,
+                }}
+            />
 
             {showSignature && <SignatureCapture title="Xác nhận" onSave={() => setShowSignature(null)} onCancel={() => setShowSignature(null)} />}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-6 sticky top-16 sm:top-20 z-30">
@@ -141,7 +152,7 @@ export const PatientDetail: React.FC = () => {
             )}
             {/* OTHER TABS Documents */}
             {activeTab === "documents" && (
-               <KetQuaDvktBrowser idPhieuKham={selectedEncounterId} baseFileUrl={env.API_BASE_URL} />
+                <KetQuaDvktBrowser idPhieuKham={selectedEncounterId} baseFileUrl={env.API_BASE_URL} />
             )}
             {/* OTHER TABS loadnote */}
             {activeTab === 'loadnote' && (

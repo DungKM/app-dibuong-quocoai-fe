@@ -1,14 +1,33 @@
 import { ProgressNote } from "@/types";
-import { authStorage } from "@/services/auth.api"; // 👈 thêm cái này
+import { authStorage } from "@/services/auth.api";
 
 const GEMINI_URL = `${import.meta.env.VITE_API_BACKEND_AUTH_NODE_URL}/api/ai/chat`;
 
-function buildSystemPrompt(patientName: string, notes?: ProgressNote[]): string {
+interface BenhAnInfo {
+  lyDoVaoVien?: string;
+  dienBienBenh?: string;
+  tienSuBenh?: string;
+  tienSuBenhGiaDinh?: string;
+  chanDoan?: string;
+  huongDieuTri?: string;
+}
+
+function buildSystemPrompt(
+  patientName: string,
+  notes?: ProgressNote[],
+  benhAnInfo?: BenhAnInfo
+): string {
   return `Bạn là trợ lý AI hỗ trợ lâm sàng cho bác sĩ. Trả lời ngắn gọn, chính xác bằng tiếng Việt.
 Luôn nhắc bác sĩ xác nhận lại trước khi ra quyết định lâm sàng.
 
 === BỆNH NHÂN: ${patientName} ===
-${notes?.length ? `Diễn biến bệnh:\n${JSON.stringify(notes, null, 2)}` : "Chưa có dữ liệu diễn biến."}
+- Lý do vào viện: ${benhAnInfo?.lyDoVaoVien || "chưa có"}
+- Diễn biến bệnh: ${benhAnInfo?.dienBienBenh || "chưa có"}
+- Tiền sử bản thân: ${benhAnInfo?.tienSuBenh || "chưa có"}
+- Tiền sử gia đình: ${benhAnInfo?.tienSuBenhGiaDinh || "chưa có"}
+- Chẩn đoán: ${benhAnInfo?.chanDoan || "chưa có"}
+- Hướng điều trị: ${benhAnInfo?.huongDieuTri || "chưa có"}
+${notes?.length ? `\nDiễn biến ghi nhận:\n${JSON.stringify(notes, null, 2)}` : ""}
 `;
 }
 
@@ -17,19 +36,20 @@ export const aiService = {
     patientName: string,
     notes: ProgressNote[] | undefined,
     history: { role: "user" | "model"; text: string }[],
-    userMessage: string
+    userMessage: string,
+    benhAnInfo?: BenhAnInfo  // 👈 thêm param
   ): Promise<string> {
-    const token = authStorage.getAccessToken(); // 👈 lấy accessToken
+    const token = authStorage.getAccessToken();
 
     const response = await fetch(GEMINI_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}), // 👈 thêm header
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         system_instruction: {
-          parts: [{ text: buildSystemPrompt(patientName, notes) }],
+          parts: [{ text: buildSystemPrompt(patientName, notes, benhAnInfo) }], // 👈 truyền vào
         },
         contents: [
           ...history.map((h) => ({ role: h.role, parts: [{ text: h.text }] })),
@@ -40,7 +60,6 @@ export const aiService = {
     });
 
     if (!response.ok) {
-      // đôi khi backend trả text/html hoặc plain text, nên đọc an toàn:
       const text = await response.text();
       let msg = "AI API error";
       try {

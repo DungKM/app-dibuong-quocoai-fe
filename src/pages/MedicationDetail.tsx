@@ -98,8 +98,8 @@ export const MedicationDetail: React.FC = () => {
     const [returnReason, setReturnReason] = useState("");
     const [returnQuantity, setReturnQuantity] = useState(1);
     const confirmMutation = useMutation({
-        mutationFn: (idPhieuThuoc: string) =>
-            confirmMedUsage(selectedEncounterId!, idPhieuThuoc),
+        mutationFn: ({ idPhieuThuoc, shift }: { idPhieuThuoc: string; shift: ShiftType }) =>
+            confirmMedUsage(selectedEncounterId!, idPhieuThuoc, shift),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
             setActionDrug(null);
@@ -327,6 +327,7 @@ export const MedicationDetail: React.FC = () => {
                     setReturnReason={setReturnReason}
                     confirmMutation={confirmMutation}
                     returnMutation={returnMutation}
+                    activeShift={activeShift}
                     onReturn={() => {
                         if (!actionDrug || !selectedEncounterId) return;
 

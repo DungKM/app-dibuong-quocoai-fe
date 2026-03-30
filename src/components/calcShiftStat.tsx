@@ -17,7 +17,6 @@ export const calcShiftStat = (
 
     // 2. Bóc tách liều dùng từ chuỗi (sử dụng hàm bên trên)
     const dsCachDung = parseCachDung(it.LieuDung);
-    console.log(dsCachDung);
     
     // 3. Kiểm tra xem thuốc có liều trong slot này không
     // SlotKey thường là: 'sang' | 'trua' | 'chieu' | 'toi' | 'dem'
