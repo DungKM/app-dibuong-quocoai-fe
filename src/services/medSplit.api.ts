@@ -72,9 +72,10 @@ export function autoSplitAllMeds(
   );
 }
 
-export function confirmMedUsage(idPhieuKham: string, idPhieuThuoc: string) {
+export function confirmMedUsage(idPhieuKham: string, idPhieuThuoc: string, shift: string) {
   return requestNode(`/api/encounters/${idPhieuKham}/med-splits/${idPhieuThuoc}/confirm`, {
     method: "PATCH",
+    body: { shift },
   });
 }
 

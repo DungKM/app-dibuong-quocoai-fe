@@ -9,8 +9,8 @@ export const DrugActionModal = ({
     returnReason,
     setReturnReason,
     confirmMutation,
-    returnMutation,
-    onReturn // Thêm prop này từ MedicationDetail truyền xuống
+    activeShift,
+    onReturn 
 }: any) => {
     if (!actionDrug) return null;
 
@@ -91,7 +91,7 @@ export const DrugActionModal = ({
                     <button
                         onClick={() => {
                             if (isConfirm) {
-                                confirmMutation.mutate(actionDrug.idPhieuThuoc);
+                               confirmMutation.mutate({ idPhieuThuoc: actionDrug.idPhieuThuoc, shift: activeShift });
                                 setActionDrug(null);
                             } else {
                                 onReturn();

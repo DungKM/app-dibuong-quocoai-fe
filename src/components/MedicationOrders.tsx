@@ -7,6 +7,7 @@ import { ShiftType } from "@/types/dibuong";
 interface MedSplitInfo {
   splits: SplitQty;
   status: string;
+  confirmedShifts?: string[];
   returnHistory?: Array<{
     quantity: number;
     reason: string;
@@ -48,6 +49,7 @@ export const MedicationOrders: React.FC<Props> = ({
       const availableQty = Math.max(0, qtyInShift - totalReturned);
       const hasBeenSplit = !!info;
       const currentStatus = info?.status || "Chờ dùng thuốc";
+      const isShiftConfirmed = info?.confirmedShifts?.includes(shift) ?? false;
 
       return {
         raw: it,
@@ -57,6 +59,7 @@ export const MedicationOrders: React.FC<Props> = ({
         qtyInShift,
         availableQty,
         totalReturned,
+        isShiftConfirmed,
         isVisible: filterTab === "PENDING" ? true : (hasBeenSplit && qtyInShift > 0)
       };
     }).filter(x => x.isVisible);
@@ -73,8 +76,8 @@ export const MedicationOrders: React.FC<Props> = ({
         </div>
       )
       }
-      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, availableQty, totalReturned, hasBeenSplit, currentStatus }) => {
-        const canAction = availableQty > 0 && currentStatus !== "Đã dùng thuốc";
+      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, availableQty, totalReturned, hasBeenSplit, currentStatus, isShiftConfirmed }) => {
+        const canAction = availableQty > 0 && !isShiftConfirmed;
         return (
           <div key={idPhieuThuoc} className={`relative rounded-[32px] border transition-all duration-300 ${hasBeenSplit && filterTab === "PENDING" ? "bg-[#f8fdfb] border-[#e2f3ee]" : "bg-white border-slate-100 shadow-sm"
             }`}>
@@ -85,7 +88,7 @@ export const MedicationOrders: React.FC<Props> = ({
                     <h3 className="text-xl font-black text-[#1a202c] leading-tight">{it.Ten}</h3>
                     {filterTab === "COMPLETED" && (
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${currentStatus === "Đã dùng thuốc" ? "bg-emerald-500 text-white" :
-                          availableQty === 0 ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
+                        availableQty === 0 ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
                         }`}>
                         {availableQty === 0 && currentStatus !== "Đã dùng thuốc" ? "Đã trả hết" : currentStatus}
                       </span>
@@ -102,8 +105,8 @@ export const MedicationOrders: React.FC<Props> = ({
                   <button
                     onClick={() => onPickDrug({ idPhieuThuoc: it.IdPhieuThuoc, ten: it.Ten, maxQty: it.SoLuong ?? 0, lieuDung: it.LieuDung ?? "" })}
                     className={`shrink-0 flex flex-col items-center justify-center gap-1 h-16 w-24 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${hasBeenSplit
-                        ? "bg-white border border-slate-200 text-slate-500 shadow-sm"
-                        : "bg-[#0f172a] text-white shadow-xl shadow-slate-200"
+                      ? "bg-white border border-slate-200 text-slate-500 shadow-sm"
+                      : "bg-[#0f172a] text-white shadow-xl shadow-slate-200"
                       }`}
                   >
                     <i className={`fa-solid ${hasBeenSplit ? 'fa-pen-to-square' : 'fa-plus-circle'} text-lg`}></i>
@@ -146,7 +149,12 @@ export const MedicationOrders: React.FC<Props> = ({
                       </>
                     ) : (
                       <div className="w-full py-4 bg-slate-50 text-slate-400 text-center text-[10px] font-black uppercase rounded-2xl border border-slate-100 italic tracking-[0.2em]">
-                        {availableQty === 0 && currentStatus !== "Đã dùng thuốc" ? "ĐÃ XỬ LÝ TRẢ HẾT" : `TRẠNG THÁI: ${currentStatus}`}
+                        {isShiftConfirmed
+                          ? "✓ ĐÃ DÙNG CA NÀY"           // 👈 message rõ ràng hơn
+                          : availableQty === 0 && currentStatus !== "Đã dùng thuốc"
+                            ? "ĐÃ XỬ LÝ TRẢ HẾT"
+                            : `TRẠNG THÁI: ${currentStatus}`
+                        }
                       </div>
                     )}
                   </div>
