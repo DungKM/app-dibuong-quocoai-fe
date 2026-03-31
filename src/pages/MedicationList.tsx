@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { format } from "date-fns";
 
 import { getBuongPhong, getDonThuocByPhieuKham, getDsLanKham } from "@/services/dibuong.api";
 import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/types/dibuong";
@@ -18,6 +21,43 @@ export const MedicationList: React.FC = () => {
   const [activeShift, setActiveShift] = useState<ShiftType>(ShiftType.MORNING);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [idKhoa, setIdKhoa] = useState<string>(KHOA_OPTIONS[0].id);
+  const displayDate = useMemo(() => {
+    if (!selectedDate) return "--/--/----";
+    const d = new Date(`${selectedDate}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return selectedDate;
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(d);
+  }, [selectedDate]);
+  const selectedDateObj = useMemo(() => {
+    if (!selectedDate) return null;
+    const d = new Date(`${selectedDate}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }, [selectedDate]);
+
+  type DateTriggerProps = { value?: string; onClick?: () => void };
+  const DateTrigger = React.forwardRef<HTMLButtonElement, DateTriggerProps>(
+    ({ onClick }, ref) => (
+      <button
+        type="button"
+        onClick={onClick}
+        ref={ref}
+        className="w-full flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-200"
+      >
+        <div className="flex items-center gap-2">
+          <i className="fa-solid fa-calendar-check text-primary text-sm"></i>
+          <span className="text-[10px] font-black text-slate-400 uppercase lg:hidden">Ngày:</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-slate-800 tabular-nums">{displayDate}</span>
+          <i className="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+        </div>
+      </button>
+    )
+  );
+  DateTrigger.displayName = "DateTrigger";
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -214,16 +254,20 @@ export const MedicationList: React.FC = () => {
         </div>
 
         <div className="w-full lg:w-auto">
-          <div className="flex items-center justify-between lg:justify-start gap-3 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 shadow-inner">
-            <div className="flex items-center gap-2">
-              <i className="fa-solid fa-calendar-check text-primary text-sm"></i>
-              <span className="text-[10px] font-black text-slate-400 uppercase lg:hidden">Ngày:</span>
-            </div>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="text-xs font-black border-none focus:ring-0 text-slate-800 bg-transparent outline-none cursor-pointer"
+          <div className="relative w-full lg:w-[240px]">
+            <DatePicker
+              selected={selectedDateObj}
+              onChange={(date) => {
+                if (!date) return;
+                setSelectedDate(format(date, "yyyy-MM-dd"));
+              }}
+              dateFormat="dd/MM/yyyy"
+              customInput={<DateTrigger />}
+              calendarClassName="rdp-calendar"
+              popperClassName="rdp-popper"
+              popperPlacement="bottom-start"
+              showPopperArrow={false}
+              fixedHeight
             />
           </div>
         </div>
