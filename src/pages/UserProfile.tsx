@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useForm } from 'react-hook-form';
+import { authApi } from '@/services/auth.api';
 import avatar from "@/assets/avatar.jpg";
 interface ProfileForm {
     name: string;
@@ -9,10 +10,12 @@ interface ProfileForm {
 }
 
 export const UserProfile: React.FC = () => {
-    const { user, updateUser } = useAuth();
+    const { user } = useAuth();
     const [successMsg, setSuccessMsg] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
-    const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
+    const { register, handleSubmit, formState: { errors }, reset } = useForm<ProfileForm>({
         defaultValues: {
             name: user?.username || '',
             avatar: user?.avatar || ''
@@ -20,12 +23,44 @@ export const UserProfile: React.FC = () => {
     });
     if (!user) return null;
 
+    const onSubmit = async (data: ProfileForm) => {
+        setSuccessMsg('');
+        setErrorMsg('');
+
+        if (!data.password) {
+            setErrorMsg('Vui lòng nhập mật khẩu mới.');
+            return;
+        }
+
+        if (!user.id) {
+            setErrorMsg('Không tìm thấy ID người dùng. Vui lòng đăng nhập lại.');
+            return;
+        }
+
+        try {
+            setIsSaving(true);
+            await authApi.resetPassword(user.id, data.password);
+            setSuccessMsg('Đổi mật khẩu thành công.');
+            reset({ ...data, password: '' });
+        } catch (err: any) {
+            setErrorMsg(err?.message || 'Đổi mật khẩu thất bại.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="max-w-2xl mx-auto">
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
                 <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                     <i className="fa-solid fa-user-gear text-primary"></i> Quản lý tài khoản
                 </h1>
+
+                {errorMsg && (
+                    <div className="mb-6 bg-red-50 text-red-700 p-4 rounded-lg flex items-center gap-2 animate-fade-in">
+                        <i className="fa-solid fa-triangle-exclamation"></i> {errorMsg}
+                    </div>
+                )}
 
                 {successMsg && (
                     <div className="mb-6 bg-green-50 text-green-700 p-4 rounded-lg flex items-center gap-2 animate-fade-in">
@@ -46,7 +81,7 @@ export const UserProfile: React.FC = () => {
                         </div>
                     </div>
 
-                    <form className="flex-1 space-y-5">
+                    <form className="flex-1 space-y-5" onSubmit={handleSubmit(onSubmit)}>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1">Họ và tên</label>
                             <input
@@ -60,20 +95,22 @@ export const UserProfile: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-1">Mật khẩu mới</label>
                                 <input
-                                    type="password"
-                                    {...register('password')}
-                                    className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition"
-                                    placeholder="Để trống nếu không đổi"
-                                />
-                            </div>
+                                type="password"
+                                {...register('password', { minLength: { value: 6, message: "Mật khẩu tối thiểu 6 ký tự" } })}
+                                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition"
+                                placeholder="Nhập mật khẩu mới"
+                            />
+                            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+                        </div>
                         </div>
 
                         <div className="pt-4 flex justify-end">
                             <button
                                 type="submit"
+                                disabled={isSaving}
                                 className="bg-primary text-white px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-primary/30 hover:bg-sky-600 transition disabled:opacity-70 flex items-center gap-2"
                             >
-                                <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                {isSaving ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                                 Lưu thay đổi
                             </button>
                         </div>

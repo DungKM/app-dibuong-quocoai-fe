@@ -35,7 +35,7 @@ export async function request<T>(path: string, options?: any): Promise<T> {
   // 🔥 HANDLE 401
   if (res.status === 401) {
     try {
-      await authApi.refresh();
+      await authApi.refreshOnce();
 
       // gọi lại API sau khi refresh
       res = await doFetch();

@@ -24,6 +24,35 @@ const getAuthHeaders = () => ({
   "Authorization": `Bearer ${authStorage.getAccessToken()}`,
 });
 
+const parseJwt = (token: string) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+export const getUserIdFromToken = (token?: string | null) => {
+  if (!token) return null;
+  const payload = parseJwt(token) as any;
+  const id = payload?.id || payload?._id || payload?.userId || payload?.sub;
+  return id ? String(id) : null;
+};
+
+let refreshPromise: Promise<string> | null = null;
+const refreshOnce = async () => {
+  if (!refreshPromise) {
+    refreshPromise = authApi.refresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+};
 
 const authenticatedRequest = async (url: string, options: RequestInit) => {
   let res = await fetch(url, {
@@ -37,7 +66,7 @@ const authenticatedRequest = async (url: string, options: RequestInit) => {
   if (res.status === 401) {
     try {
       console.log("Token expired, attempting auto-refresh...");
-      await authApi.refresh();
+      await refreshOnce();
 
       res = await fetch(url, {
         ...options,
@@ -105,6 +134,8 @@ export const authApi = {
     authStorage.set(data.accessToken, data.refreshToken || refreshToken, data.role);
     return data.accessToken;
   },
+
+  refreshOnce,
 
   logout: async () => {
     const refreshToken = authStorage.getRefreshToken();

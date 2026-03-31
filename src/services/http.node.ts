@@ -32,7 +32,7 @@ export async function requestNode<T>(path: string, opts: ReqOpts = {}): Promise<
 
     if (res.status === 401) {
         try {
-            const newToken = await authApi.refresh();
+            const newToken = await authApi.refreshOnce();
             res = await fetch(url.toString(), {
                 method: opts.method ?? "GET",
                 headers: { ...getHeaders(), Authorization: `Bearer ${newToken}` },
