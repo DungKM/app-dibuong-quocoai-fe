@@ -89,7 +89,7 @@ export const MedicationList: React.FC = () => {
         });
       });
     });
-    return list;
+    return list.sort((a, b) => a.idBenhAn.localeCompare(b.idBenhAn));
   }, [wardData]);
 
   const { data: lanKhamByBenhAn } = useQuery({
@@ -124,11 +124,11 @@ export const MedicationList: React.FC = () => {
           });
         });
       });
-      return Array.from(set);
+      return Array.from(set).sort();
     }
 
     // Lấy các idPhieuKham có giá trị (không null)
-    return Object.values(lanKhamByBenhAn).filter(Boolean) as string[];
+    return (Object.values(lanKhamByBenhAn).filter(Boolean) as string[]).sort();
   }, [lanKhamByBenhAn, wardData]);
 
   /** 3) Fetch thuốc theo từng idPhieuKham */
@@ -165,6 +165,17 @@ export const MedicationList: React.FC = () => {
     },
   });
 
+  const shiftsByVisit = useMemo(() => {
+    const map: Record<string, ReturnType<typeof buildAdvancedShiftStats>> = {};
+    if (!medsByVisit || !allSplitsByVisit) return map;
+    Object.keys(medsByVisit).forEach((id) => {
+      const meds = medsByVisit[id] ?? [];
+      const splits = allSplitsByVisit[id] ?? {};
+      map[id] = buildAdvancedShiftStats(meds, splits);
+    });
+    return map;
+  }, [medsByVisit, allSplitsByVisit]);
+
   const wardLayout = useMemo(() => {
     if (!wardData?.DSPhong) return [];
 
@@ -178,8 +189,7 @@ export const MedicationList: React.FC = () => {
           const idPK = lanKhamByBenhAn?.[idBenhAn]
             ?? String(benhAn?.IdPhieuKhamMoiNhat);
           const meds = medsByVisit?.[idPK] ?? [];
-          const splits = allSplitsByVisit?.[idPK] ?? {};
-          const shifts = buildAdvancedShiftStats(meds, splits);
+          const shifts = shiftsByVisit[idPK] ?? buildAdvancedShiftStats(meds, allSplitsByVisit?.[idPK] ?? {});
 
           return {
             id: String(benhAn.IdBenhAn),
@@ -201,7 +211,23 @@ export const MedicationList: React.FC = () => {
         };
       }),
     }));
-  }, [wardData, medsByVisit, allSplitsByVisit]);
+  }, [wardData, lanKhamByBenhAn, medsByVisit, allSplitsByVisit, shiftsByVisit]);
+
+  const totalByShift = useMemo(() => {
+    const result: Record<string, number> = {};
+    wardLayout.forEach((room) => {
+      room.beds.forEach((bed) => {
+        bed.visits.forEach((v) => {
+          const shifts = v.marSummary?.shifts || {};
+          Object.keys(shifts).forEach((shiftId) => {
+            const total = shifts[shiftId]?.total ?? 0;
+            result[shiftId] = (result[shiftId] || 0) + total;
+          });
+        });
+      });
+    });
+    return result;
+  }, [wardLayout]);
   const isClosed = false;
   const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
   const error = wardError || medsError;
@@ -282,13 +308,7 @@ export const MedicationList: React.FC = () => {
             { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
             { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
           ].map((s) => {
-            const totalInShift = wardLayout.reduce((acc, room) => {
-              return acc + room.beds.reduce((accBed, bed) => {
-                const bedTotal = bed.visits.reduce((accVisit, v) =>
-                  accVisit + (v.marSummary?.shifts?.[s.id]?.total ?? 0), 0);
-                return accBed + bedTotal;
-              }, 0);
-            }, 0);
+            const totalInShift = totalByShift[s.id] ?? 0;
 
             return (
               <button
