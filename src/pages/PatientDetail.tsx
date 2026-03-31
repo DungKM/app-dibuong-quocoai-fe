@@ -22,6 +22,7 @@ export const PatientDetail: React.FC = () => {
     const qs = new URLSearchParams(search);
     const maBenhNhan = qs.get("maBenhNhan") ?? "";
     const tenBenhNhan = qs.get("tenBenhNhan") ?? "";
+    const aiQuestion = qs.get("aiQuestion") ?? "";
 
     const IdBenhAn = id ?? "";
     const navigate = useNavigate();
@@ -50,6 +51,16 @@ export const PatientDetail: React.FC = () => {
                     chanDoan: item?.ChanDoan,
                     huongDieuTri: item?.HuongDieuTri,
                 }}
+                initialQuestion={aiQuestion}
+                dataReady={!!(item && (
+                    item.LyDoVaoVien ||
+                    item.DienBienBenh ||
+                    item.TienSuBenh ||
+                    item.TienSuBenhGiaDinh ||
+                    item.ChanDoan ||
+                    item.HuongDieuTri ||
+                    (item.notes && item.notes.length > 0)
+                ))}
             />
 
             {showSignature && <SignatureCapture title="Xác nhận" onSave={() => setShowSignature(null)} onCancel={() => setShowSignature(null)} />}

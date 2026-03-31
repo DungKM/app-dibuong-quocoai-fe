@@ -9,8 +9,24 @@ import { useAuth } from "@/context/AuthContext";
 export const PatientList: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const { user } = useAuth();
   const ID_KHOA = user?.idHis || "";
+  const AI_SUGGESTIONS = [
+    "Tóm tắt diễn biến gần đây của bệnh nhân",
+    "Vấn đề nổi bật cần chú ý hôm nay",
+    "Cảnh báo rủi ro và dấu hiệu cần theo dõi",
+    "Giải thích chẩn đoán và hướng điều trị",
+    "Đề xuất theo dõi/chăm sóc theo ca",
+    "Checklist những điểm cần nhắc bác sĩ",
+  ];
+
+  const handleSuggestionClick = (text: string) => {
+    setPendingQuestion(text);
+    setIsPickerOpen(true);
+  };
+
   const { data, isLoading } = useQuery<BuongPhongResponse>({
     queryKey: ["buongphong", ID_KHOA],
     queryFn: () => getBuongPhong(ID_KHOA),
@@ -47,6 +63,20 @@ export const PatientList: React.FC = () => {
       }),
     }));
   }, [data]);
+
+  const allPatients = useMemo(() => {
+    return wardLayout.flatMap((room) =>
+      room.beds.flatMap((bed) =>
+        bed.patients.map((p) => ({
+          idBenhAn: p.id,
+          maBenhNhan: p.code,
+          tenBenhNhan: p.name,
+          room: room.room,
+          bed: bed.code,
+        }))
+      )
+    ).filter((p) => !!p.idBenhAn);
+  }, [wardLayout]);
 
   const filteredWard = useMemo(() => {
     const s = searchTerm.trim().toLowerCase();
@@ -138,6 +168,33 @@ export const PatientList: React.FC = () => {
         </div>
       </div>
 
+      <div className="bg-white p-4 md:p-6 rounded-[28px] border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <i className="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div>
+            <h3 className="text-sm md:text-base font-black text-slate-800 uppercase">Gợi ý hỏi AI</h3>
+            <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest">
+              Dùng cho bất kỳ bệnh nhân nào trong khoa
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {AI_SUGGESTIONS.map((q, idx) => (
+            <button
+              type="button"
+              onClick={() => handleSuggestionClick(q)}
+              key={idx}
+              className="px-3 py-2 rounded-full bg-slate-100 text-slate-700 text-xs font-bold hover:bg-indigo-50 hover:text-indigo-700 transition"
+              title="Bấm để chọn bệnh nhân"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex justify-start">
         <div className="relative w-full md:w-96 group">
           <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors"></i>
@@ -163,6 +220,62 @@ export const PatientList: React.FC = () => {
           navigate(`/patient/${idBenhAn}?${qs}`);
         }}
       />
+
+      {isPickerOpen && (
+        <div className="fixed inset-0 z-[70] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm md:text-base font-black text-slate-900">Chọn bệnh nhân để hỏi AI</h3>
+                <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  {pendingQuestion}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPickerOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 flex items-center justify-center"
+                aria-label="Đóng"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto divide-y divide-slate-100">
+              {allPatients.length === 0 && (
+                <div className="p-6 text-sm text-slate-500">Không có bệnh nhân để chọn.</div>
+              )}
+              {allPatients.map((p) => (
+                <button
+                  key={`${p.idBenhAn}-${p.bed}`}
+                  type="button"
+                  onClick={() => {
+                    if (!pendingQuestion) return;
+                    const qs = new URLSearchParams({
+                      maBenhNhan: p.maBenhNhan ?? "",
+                      tenBenhNhan: p.tenBenhNhan ?? "",
+                      aiQuestion: pendingQuestion,
+                    }).toString();
+                    setIsPickerOpen(false);
+                    navigate(`/patient/${p.idBenhAn}?${qs}`);
+                  }}
+                  className="w-full text-left px-4 md:px-5 py-4 hover:bg-slate-50 transition"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-black text-slate-900 text-sm">{p.tenBenhNhan}</div>
+                      <div className="text-xs text-slate-500 font-bold mt-1">
+                        Mã BN: {p.maBenhNhan || "--"} · Phòng {p.room} · Giường {p.bed}
+                      </div>
+                    </div>
+                    <i className="fa-solid fa-chevron-right text-slate-300"></i>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

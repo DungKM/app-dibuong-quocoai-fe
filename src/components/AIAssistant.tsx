@@ -13,6 +13,8 @@ interface Props {
     chanDoan?: string;
     huongDieuTri?: string;
   };
+  initialQuestion?: string;
+  dataReady?: boolean;
 }
 
 interface Message {
@@ -22,7 +24,13 @@ interface Message {
   timestamp: Date;
 }
 
-export const AIAssistant: React.FC<Props> = ({ patientName, notes, benhAnInfo }) => {
+export const AIAssistant: React.FC<Props> = ({
+  patientName,
+  notes,
+  benhAnInfo,
+  initialQuestion,
+  dataReady = true,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: "user" | "model"; text: string }[]>([]);
@@ -30,12 +38,19 @@ export const AIAssistant: React.FC<Props> = ({ patientName, notes, benhAnInfo })
     {
       id: 'welcome',
       role: 'ai',
-      content: `Xin chào, tôi là trợ lý AI. Tôi đã đọc diễn biến của bệnh nhân **${patientName}**. Bạn cần hỏi gì?`,
+      content: `Xin chào, tôi là trợ lý AI. Tôi đã đọc diễn biến của bệnh nhân **${patientName}**.  
+**Bạn có thể hỏi:**  
+- Tóm tắt diễn biến gần đây và vấn đề nổi bật  
+- Cảnh báo rủi ro cần theo dõi  
+- Giải thích chẩn đoán và hướng điều trị  
+- Gợi ý theo dõi/chăm sóc theo ca  
+- Checklist những điểm cần nhắc bác sĩ`,
       timestamp: new Date()
     }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialSentRef = useRef<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -68,10 +83,23 @@ export const AIAssistant: React.FC<Props> = ({ patientName, notes, benhAnInfo })
     }
   };
 
+  useEffect(() => {
+    const q = (initialQuestion || "").trim();
+    if (!q) return;
+    if (initialSentRef.current === q) return;
+    setIsOpen(true);
+    if (!dataReady) return;
+    initialSentRef.current = q;
+    handleSend(q);
+  }, [initialQuestion, dataReady]);
+
   const SUGGESTIONS = [
     { label: "Tóm tắt diễn biến", icon: "fa-file-medical-alt" },
+    { label: "Vấn đề nổi bật", icon: "fa-circle-exclamation" },
     { label: "Cảnh báo rủi ro", icon: "fa-triangle-exclamation" },
     { label: "Đề xuất theo dõi", icon: "fa-clipboard-user" },
+    { label: "Giải thích chẩn đoán", icon: "fa-notes-medical" },
+    { label: "Checklist cần lưu ý", icon: "fa-list-check" },
   ];
 
   return (
@@ -112,6 +140,11 @@ export const AIAssistant: React.FC<Props> = ({ patientName, notes, benhAnInfo })
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-5 bg-slate-50 space-y-4">
+            {!dataReady && initialQuestion && (
+              <div className="bg-amber-50 text-amber-700 border border-amber-100 rounded-xl px-3 py-2 text-xs font-bold">
+                Đang tải thông tin bệnh án. AI sẽ trả lời khi dữ liệu sẵn sàng.
+              </div>
+            )}
             {messages.map(msg => (
               <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.role === 'user'
