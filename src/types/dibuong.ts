@@ -184,6 +184,7 @@ export type MedVisitLite = {
   patientName: string;
   patientCode: string;
   patientGender?: string;
+  patientAge?: string;
   room: string; 
   bed: string; 
   idPhieuKham?: string; 

@@ -1,74 +1,68 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
+import "react-datepicker/dist/react-datepicker.css";
 
-import { getBuongPhong, getDonThuocByPhieuKham, getDsLanKham } from "@/services/dibuong.api";
-import { BuongPhongResponse, DonThuocItem, MedVisitLite, ShiftType } from "@/types/dibuong";
 import { MedicationBedCard } from "@/components/MedicationBedCard";
-import { getMedSplitsByEncounter } from "@/services/medSplit.api";
 import { buildAdvancedShiftStats } from "@/components/buildAdvancedShiftStats";
 import { useAuth } from "@/context/AuthContext";
-
+import { getBuongPhong, getDonThuocByPhieuKham, getDsLanKham } from "@/services/dibuong.api";
+import { getMedSplitsByEncounter } from "@/services/medSplit.api";
+import type { BuongPhongResponse, DonThuocItem, MedVisitLite } from "@/types/dibuong";
+import { ShiftType } from "@/types/dibuong";
+import { getCurrentShift, SHIFT_OPTIONS } from "@/utils/shifts";
 
 export const MedicationList: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
-  const KHOA_OPTIONS = [
-    { id: user?.idHis || "", name: user?.tenKhoa || "Khoa" },
-  ];
+  const khoaOptions = [{ id: user?.idHis || "", name: user?.tenKhoa || "Khoa" }];
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeShift, setActiveShift] = useState<ShiftType>(ShiftType.MORNING);
+  const [activeShift, setActiveShift] = useState<ShiftType>(() => getCurrentShift());
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [idKhoa, setIdKhoa] = useState<string>(KHOA_OPTIONS[0].id);
+  const [idKhoa, setIdKhoa] = useState<string>(khoaOptions[0].id);
+
   const displayDate = useMemo(() => {
     if (!selectedDate) return "--/--/----";
-    const d = new Date(`${selectedDate}T00:00:00`);
-    if (Number.isNaN(d.getTime())) return selectedDate;
+    const date = new Date(`${selectedDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return selectedDate;
+
     return new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-    }).format(d);
+    }).format(date);
   }, [selectedDate]);
+
   const selectedDateObj = useMemo(() => {
     if (!selectedDate) return null;
-    const d = new Date(`${selectedDate}T00:00:00`);
-    return Number.isNaN(d.getTime()) ? null : d;
+    const date = new Date(`${selectedDate}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
   }, [selectedDate]);
 
   type DateTriggerProps = { value?: string; onClick?: () => void };
-  const DateTrigger = React.forwardRef<HTMLButtonElement, DateTriggerProps>(
-    ({ onClick }, ref) => (
-      <button
-        type="button"
-        onClick={onClick}
-        ref={ref}
-        className="w-full flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-200"
-      >
-        <div className="flex items-center gap-2">
-          <i className="fa-solid fa-calendar-check text-primary text-sm"></i>
-          <span className="text-[10px] font-black text-slate-400 uppercase lg:hidden">Ngày:</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-slate-800 tabular-nums">{displayDate}</span>
-          <i className="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
-        </div>
-      </button>
-    )
-  );
+
+  const DateTrigger = React.forwardRef<HTMLButtonElement, DateTriggerProps>(({ onClick }, ref) => (
+    <button
+      type="button"
+      onClick={onClick}
+      ref={ref}
+      className="w-full flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-200"
+    >
+      <div className="flex items-center gap-2">
+        <i className="fa-solid fa-calendar-check text-primary text-sm"></i>
+        <span className="text-[10px] font-black text-slate-400 uppercase lg:hidden">Ngay:</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-black text-slate-800 tabular-nums">{displayDate}</span>
+        <i className="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+      </div>
+    </button>
+  ));
+
   DateTrigger.displayName = "DateTrigger";
 
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour < 12) setActiveShift(ShiftType.MORNING);
-    else if (hour >= 12 && hour < 14) setActiveShift(ShiftType.NOON);
-    else if (hour >= 14 && hour < 18) setActiveShift(ShiftType.AFTERNOON);
-    else setActiveShift(ShiftType.NIGHT);
-  }, []);
-
-  /** 1) Lấy buồng/giường */
   const {
     data: wardData,
     isLoading: isLoadingWard,
@@ -81,6 +75,7 @@ export const MedicationList: React.FC = () => {
 
   const benhAnIds = useMemo(() => {
     const list: { idBenhAn: string }[] = [];
+
     wardData?.DSPhong?.forEach((phong: any) => {
       phong?.DsGiuong?.forEach((giuong: any) => {
         giuong?.DsBenhAn?.forEach((benhAn: any) => {
@@ -90,6 +85,7 @@ export const MedicationList: React.FC = () => {
         });
       });
     });
+
     return list.sort((a, b) => a.idBenhAn.localeCompare(b.idBenhAn));
   }, [wardData]);
 
@@ -100,39 +96,34 @@ export const MedicationList: React.FC = () => {
       const entries = await Promise.all(
         benhAnIds.map(async ({ idBenhAn }) => {
           const list = await getDsLanKham(idBenhAn);
-          // Filter theo ngày đã chọn
-          const matched = list?.find((lk) =>
-            lk.NgayThucKham?.startsWith(selectedDate)
-          );
+          const matched = list?.find((lk) => lk.NgayThucKham?.startsWith(selectedDate));
           return [idBenhAn, matched?.Id ?? null] as const;
         })
       );
+
       return Object.fromEntries(entries);
     },
   });
 
-
-  /** 2) Gom list idPhieuKham để call thuốc */
   const phieuKhamIds = useMemo(() => {
     if (!lanKhamByBenhAn) {
-      // Fallback về IdPhieuKhamMoiNhat khi chưa load xong
-      const set = new Set<string>();
+      const ids = new Set<string>();
+
       wardData?.DSPhong?.forEach((phong: any) => {
         phong?.DsGiuong?.forEach((giuong: any) => {
           giuong?.DsBenhAn?.forEach((benhAn: any) => {
             const id = benhAn?.IdPhieuKhamMoiNhat;
-            if (id) set.add(String(id));
+            if (id) ids.add(String(id));
           });
         });
       });
-      return Array.from(set).sort();
+
+      return Array.from(ids).sort();
     }
 
-    // Lấy các idPhieuKham có giá trị (không null)
     return (Object.values(lanKhamByBenhAn).filter(Boolean) as string[]).sort();
   }, [lanKhamByBenhAn, wardData]);
 
-  /** 3) Fetch thuốc theo từng idPhieuKham */
   const {
     data: medsByVisit,
     isLoading: isLoadingMeds,
@@ -147,14 +138,15 @@ export const MedicationList: React.FC = () => {
           return [id, meds] as const;
         })
       );
+
       return Object.fromEntries(entries);
     },
   });
-  /** 4) Fetch toàn bộ dữ liệu thực tế (MedShiftSplit) của các idPhieuKham */
+
   const { data: allSplitsByVisit } = useQuery({
     queryKey: ["allMedSplits", phieuKhamIds],
     enabled: phieuKhamIds.length > 0,
-    staleTime: 0, // 👈 thêm dòng này
+    staleTime: 0,
     queryFn: async () => {
       const entries = await Promise.all(
         phieuKhamIds.map(async (id) => {
@@ -162,6 +154,7 @@ export const MedicationList: React.FC = () => {
           return [id, res.splits] as const;
         })
       );
+
       return Object.fromEntries(entries);
     },
   });
@@ -169,11 +162,13 @@ export const MedicationList: React.FC = () => {
   const shiftsByVisit = useMemo(() => {
     const map: Record<string, ReturnType<typeof buildAdvancedShiftStats>> = {};
     if (!medsByVisit || !allSplitsByVisit) return map;
+
     Object.keys(medsByVisit).forEach((id) => {
       const meds = medsByVisit[id] ?? [];
       const splits = allSplitsByVisit[id] ?? {};
       map[id] = buildAdvancedShiftStats(meds, splits);
     });
+
     return map;
   }, [medsByVisit, allSplitsByVisit]);
 
@@ -187,10 +182,10 @@ export const MedicationList: React.FC = () => {
 
         const visits: MedVisitLite[] = (giuong.DsBenhAn ?? []).map((benhAn: any) => {
           const idBenhAn = String(benhAn.IdBenhAn);
-          const idPK = lanKhamByBenhAn?.[idBenhAn]
-            ?? String(benhAn?.IdPhieuKhamMoiNhat);
-          const meds = medsByVisit?.[idPK] ?? [];
-          const shifts = shiftsByVisit[idPK] ?? buildAdvancedShiftStats(meds, allSplitsByVisit?.[idPK] ?? {});
+          const idPhieuKham = lanKhamByBenhAn?.[idBenhAn] ?? String(benhAn?.IdPhieuKhamMoiNhat);
+          const meds = medsByVisit?.[idPhieuKham] ?? [];
+          const shifts =
+            shiftsByVisit[idPhieuKham] ?? buildAdvancedShiftStats(meds, allSplitsByVisit?.[idPhieuKham] ?? {});
 
           return {
             id: String(benhAn.IdBenhAn),
@@ -200,7 +195,7 @@ export const MedicationList: React.FC = () => {
             patientAge: benhAn.Tuoi,
             room: String(phong.Ma),
             bed: String(bedCode),
-            idPhieuKham: idPK,
+            idPhieuKham,
             marSummary: { shifts },
           };
         });
@@ -208,18 +203,19 @@ export const MedicationList: React.FC = () => {
         return {
           code: bedCode,
           visits,
-          isOccupied: visits.length > 0
+          isOccupied: visits.length > 0,
         };
       }),
     }));
-  }, [wardData, lanKhamByBenhAn, medsByVisit, allSplitsByVisit, shiftsByVisit]);
+  }, [allSplitsByVisit, lanKhamByBenhAn, medsByVisit, shiftsByVisit, wardData]);
 
   const totalByShift = useMemo(() => {
     const result: Record<string, number> = {};
+
     wardLayout.forEach((room) => {
       room.beds.forEach((bed) => {
-        bed.visits.forEach((v) => {
-          const shifts = v.marSummary?.shifts || {};
+        bed.visits.forEach((visit) => {
+          const shifts = visit.marSummary?.shifts || {};
           Object.keys(shifts).forEach((shiftId) => {
             const total = shifts[shiftId]?.total ?? 0;
             result[shiftId] = (result[shiftId] || 0) + total;
@@ -227,20 +223,21 @@ export const MedicationList: React.FC = () => {
         });
       });
     });
+
     return result;
   }, [wardLayout]);
 
   const filteredWard = useMemo(() => {
-    const s = searchTerm.trim().toLowerCase();
-    if (!s) return wardLayout;
+    const normalized = searchTerm.trim().toLowerCase();
+    if (!normalized) return wardLayout;
 
     return wardLayout.map((room) => ({
       ...room,
       beds: room.beds.map((bed) => {
         const matchingVisits = bed.visits.filter(
           (visit) =>
-            (visit.patientName ?? "").toLowerCase().includes(s) ||
-            String(visit.patientCode ?? "").toLowerCase().includes(s)
+            (visit.patientName ?? "").toLowerCase().includes(normalized) ||
+            String(visit.patientCode ?? "").toLowerCase().includes(normalized)
         );
 
         return {
@@ -250,11 +247,12 @@ export const MedicationList: React.FC = () => {
         };
       }),
     }));
-  }, [wardLayout, searchTerm]);
+  }, [searchTerm, wardLayout]);
 
   const isClosed = false;
   const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
   const error = wardError || medsError;
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-4">
@@ -262,16 +260,21 @@ export const MedicationList: React.FC = () => {
           <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
           <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <p className="text-gray-500 text-sm animate-pulse">
-          Vui lòng chờ giây lát...
-        </p>
+        <p className="text-gray-500 text-sm animate-pulse">Vui long cho giay lat...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-[1300px] mx-auto p-6 bg-red-50 border border-red-200 text-red-700 font-bold rounded-3xl">
+        Loi tai du lieu: {String((error as any)?.message || error)}
       </div>
     );
   }
 
   return (
     <div className="space-y-4 md:space-y-6 pb-24 px-3 md:px-6 max-w-[1300px] mx-auto">
-      {/* Dashboard Header: Chuyển thành 1 cột trên mobile */}
       <div className="bg-white p-4 md:p-6 rounded-[28px] md:rounded-[36px] border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-6">
         <div className="flex items-center gap-4 md:gap-5">
           <div className="w-12 h-12 md:w-16 md:h-16 bg-primary text-white rounded-[20px] md:rounded-[24px] flex items-center justify-center text-xl md:text-3xl shadow-xl shadow-primary/20 transform -rotate-2">
@@ -280,7 +283,7 @@ export const MedicationList: React.FC = () => {
 
           <div>
             <h1 className="text-xl md:text-3xl font-black text-slate-900 uppercase leading-none mb-1 tracking-tighter">
-              Thực hiện thuốc
+              Thuc hien thuoc
             </h1>
 
             <div className="flex flex-wrap items-center gap-2 text-slate-400 text-[9px] md:text-[10px] font-black uppercase tracking-widest">
@@ -291,13 +294,15 @@ export const MedicationList: React.FC = () => {
                   onChange={(e) => setIdKhoa(e.target.value)}
                   className="bg-transparent outline-none font-black"
                 >
-                  {KHOA_OPTIONS.map((k) => (
-                    <option key={k.id} value={k.id}>{k.name}</option>
+                  {khoaOptions.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.name}
+                    </option>
                   ))}
                 </select>
               </span>
               <span className="flex items-center gap-1.5">
-                <i className="fa-solid fa-shield-halved"></i> 5 đúng
+                <i className="fa-solid fa-shield-halved"></i> 5 dung
               </span>
             </div>
           </div>
@@ -323,23 +328,20 @@ export const MedicationList: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs ca: Cho phép cuộn ngang trên mobile nếu quá dài */}
       <div className="overflow-x-auto no-scrollbar pb-1">
         <div className="bg-slate-200/30 p-1.5 rounded-2xl flex gap-1.5 shadow-inner min-w-[400px] md:min-w-0 md:max-w-5xl md:mx-auto">
-          {[
-            { id: ShiftType.MORNING, label: "Sáng", icon: "fa-sun" },
-            { id: ShiftType.NOON, label: "Trưa", icon: "fa-cloud-sun" },
-            { id: ShiftType.AFTERNOON, label: "Chiều", icon: "fa-cloud" },
-            { id: ShiftType.NIGHT, label: "Tối", icon: "fa-moon" },
-          ].map((s) => {
-            const totalInShift = totalByShift[s.id] ?? 0;
+          {SHIFT_OPTIONS.map((option) => {
+            const totalInShift = totalByShift[option.id] ?? 0;
 
             return (
               <button
-                key={s.id}
-                onClick={() => setActiveShift(s.id)}
-                className={`flex-1 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center relative
-                ${activeShift === s.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}
+                key={option.id}
+                type="button"
+                onClick={() => setActiveShift(option.id)}
+                title={`${option.label} (${option.timeRange})`}
+                className={`flex-1 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center relative ${
+                  activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-500"
+                }`}
               >
                 {totalInShift > 0 && (
                   <span className="absolute top-1 right-2 flex h-2 w-2">
@@ -348,8 +350,8 @@ export const MedicationList: React.FC = () => {
                   </span>
                 )}
                 <div className="flex items-center gap-1.5 md:gap-2">
-                  <i className={`fa-solid ${s.icon} text-[10px] md:text-[12px]`} />
-                  <span className="text-[9px] md:text-[11px] font-extrabold uppercase">{s.label}</span>
+                  <i className={`fa-solid ${option.icon} text-[10px] md:text-[12px]`} />
+                  <span className="text-[9px] md:text-[11px] font-extrabold uppercase">{option.label}</span>
                 </div>
                 <span className="text-[8px] font-bold opacity-60 italic">({totalInShift})</span>
               </button>
@@ -358,13 +360,12 @@ export const MedicationList: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid Phòng và Giường: Tự động đổi số cột */}
       <div className="flex justify-start">
         <div className="relative w-full md:w-96 group">
           <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors"></i>
           <input
             type="text"
-            placeholder="Tìm tên bệnh nhân, mã số..."
+            placeholder="Tim ten benh nhan, ma so..."
             className="w-full pl-12 pr-6 py-4 rounded-3xl border-2 border-slate-200 bg-white text-slate-900 font-black text-sm placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -380,12 +381,11 @@ export const MedicationList: React.FC = () => {
                 {String(room.room).replace(/\D/g, "") || "--"}
               </div>
               <div className="flex-1">
-                <h3 className="font-black text-base md:text-xl text-slate-800 uppercase tracking-tight">Phòng {room.room}</h3>
+                <h3 className="font-black text-base md:text-xl text-slate-800 uppercase tracking-tight">Phong {room.room}</h3>
               </div>
               <div className="h-px flex-1 bg-slate-100"></div>
             </div>
 
-            {/* Giường: 1 cột trên mobile, 2 cột trên tablet trở lên */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               {room.beds.map((bed, idx) => (
                 <MedicationBedCard

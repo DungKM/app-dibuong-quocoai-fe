@@ -6,7 +6,7 @@ import { ShiftType } from "@/types/dibuong";
 
 interface MedSplitInfo {
   splits: SplitQty;
-  status: string;
+  status?: string;
   confirmedShifts?: string[];
   returnHistory?: Array<{
     quantity: number;
