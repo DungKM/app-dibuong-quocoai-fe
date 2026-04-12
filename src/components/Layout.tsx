@@ -9,6 +9,7 @@ import { env } from "@/config/env";
 import { authStorage } from '@/services/auth.api';
 import { useNavigate } from "react-router-dom";
 import { ReturnNotificationsModal } from "@/components/ReturnNotificationsModal";
+import { getNotifications } from "@/services/notifications.api";
 
 export const Layout: React.FC = () => {
   const location = useLocation();
@@ -25,32 +26,11 @@ export const Layout: React.FC = () => {
 
     (async () => {
       try {
-        const res = await fetch(
-          `${env.API_BACKEND_AUTH_NODE_URL}/api/notifications`,
-          {
-            headers: {
-              Authorization: `Bearer ${authStorage.getAccessToken()}`,
-            },
-          }
-        );
-        if (res.status === 401) {
-          authStorage.clear();
-          window.location.href = "/#/login";
-          return;
-        }
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const json = await res.json();
-
+        const json = await getNotifications();
         setNotifications(json.data || []);
         setUnreadCount(json.unreadCount || 0);
       } catch (e) {
         console.log("Load notifications error:", e);
-        authStorage.clear();
-        window.location.href = "/#/login";
       }
     })();
   }, [user?.idKhoa]);

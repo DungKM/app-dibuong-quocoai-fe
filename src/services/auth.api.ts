@@ -54,7 +54,7 @@ const refreshOnce = async () => {
   return refreshPromise;
 };
 
-const authenticatedRequest = async (url: string, options: RequestInit) => {
+export const authenticatedRequest = async (url: string, options: RequestInit) => {
   let res = await fetch(url, {
     ...options,
     headers: {
