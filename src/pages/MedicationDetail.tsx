@@ -13,6 +13,7 @@ import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
 import {
   autoSplitAllMeds,
   cancelConfirmedUsage,
+  confirmAllMedUsage,
   confirmMedUsage,
   getMedSplitsByEncounter,
   returnMedication,
@@ -180,6 +181,37 @@ export const MedicationDetail: React.FC = () => {
     },
   });
 
+  const confirmAllMutation = useMutation({
+    mutationFn: async () => {
+      const shifts = SHIFT_OPTIONS.map((option) => option.id);
+      return Promise.all(shifts.map((shift) => confirmAllMedUsage(selectedEncounterId!, shift)));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
+      toast.success("Da xac nhan dung toan bo thuoc tat ca cac ca");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Xac nhan dung toan bo that bai");
+    },
+  });
+
+  const hasConfirmableMeds = useMemo(() => {
+    const splitMap = splitData?.splits ?? {};
+    const shiftKeys: Array<keyof SplitQty> = ["MORNING", "NOON", "AFTERNOON", "NIGHT"];
+
+    return Object.values(splitMap).some((item) => {
+      return shiftKeys.some((shiftKey) => {
+        const qtyInShift = Number(item.splits?.[shiftKey] ?? 0);
+        const returnedQty =
+          item.returnHistory?.reduce((sum, historyItem: any) => {
+            return historyItem.shift === shiftKey ? sum + Number(historyItem.quantity ?? 0) : sum;
+          }, 0) ?? 0;
+        const isConfirmed = item.confirmedShifts?.includes(shiftKey) ?? false;
+        return qtyInShift - returnedQty > 0 && !isConfirmed;
+      });
+    });
+  }, [splitData]);
+
   if (!currentUser) return null;
 
   return (
@@ -256,37 +288,60 @@ export const MedicationDetail: React.FC = () => {
       </button>
 
       {activeTab === "COMPLETED" && (
-        <div className="bg-slate-100/50 p-1 rounded-2xl flex gap-1 shadow-inner mx-4 animate-in fade-in duration-300">
-          {SHIFT_OPTIONS.map((option) => {
-            const hasDataInShift = Object.values(splitData?.splits ?? {}).some(
-              (item) => Number(item.splits[option.id as keyof SplitQty] ?? 0) > 0
-            );
+        <div className="mx-4 space-y-3 animate-in fade-in duration-300">
+          <div className="bg-slate-100/50 p-1 rounded-2xl flex gap-1 shadow-inner">
+            {SHIFT_OPTIONS.map((option) => {
+              const hasDataInShift = Object.values(splitData?.splits ?? {}).some(
+                (item) => Number(item.splits[option.id as keyof SplitQty] ?? 0) > 0
+              );
 
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setActiveShift(option.id)}
-                title={`${option.label} (${option.timeRange})`}
-                className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${
-                  activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
-                }`}
-              >
-                {hasDataInShift && (
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm"></span>
-                )}
-
-                <i
-                  className={`fa-solid ${option.icon} ${
-                    hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setActiveShift(option.id)}
+                  title={`${option.label} (${option.timeRange})`}
+                  className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${
+                    activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
                   }`}
-                ></i>
-                <span className={hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""}>
-                  {option.label}
-                </span>
-              </button>
-            );
-          })}
+                >
+                  {hasDataInShift && (
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm"></span>
+                  )}
+
+                  <i
+                    className={`fa-solid ${option.icon} ${
+                      hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""
+                    }`}
+                  ></i>
+                  <span className={hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""}>
+                    {option.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                Xac nhan nhanh
+              </div>
+              <div className="text-[11px] font-bold text-emerald-900 truncate">
+                Dung toan bo thuoc cua tat ca cac ca
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => confirmAllMutation.mutate()}
+              disabled={!selectedEncounterId || !hasConfirmableMeds || confirmAllMutation.isPending}
+              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-md shadow-emerald-100 transition disabled:opacity-50 disabled:shadow-none"
+            >
+              <i className="fa-solid fa-check-double"></i>
+              {confirmAllMutation.isPending ? "Dang xu ly..." : "Xac nhan tat ca"}
+            </button>
+          </div>
         </div>
       )}
 

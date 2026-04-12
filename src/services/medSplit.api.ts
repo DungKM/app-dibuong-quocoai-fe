@@ -12,6 +12,7 @@ export interface ReturnHistoryItem {
 export interface MedSplitItem {
   splits: SplitQty;
   status?: string;
+  confirmedShifts?: string[];
   splitSource?: "MANUAL" | "RULE" | "AI";
   confidence?: number;
   needsReview?: boolean;
@@ -74,6 +75,13 @@ export function autoSplitAllMeds(
 
 export function confirmMedUsage(idPhieuKham: string, idPhieuThuoc: string, shift: string) {
   return requestNode(`/api/encounters/${idPhieuKham}/med-splits/${idPhieuThuoc}/confirm`, {
+    method: "PATCH",
+    body: { shift },
+  });
+}
+
+export function confirmAllMedUsage(idPhieuKham: string, shift: string) {
+  return requestNode(`/api/encounters/${idPhieuKham}/med-splits/confirm-all`, {
     method: "PATCH",
     body: { shift },
   });
