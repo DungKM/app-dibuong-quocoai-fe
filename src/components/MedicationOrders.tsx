@@ -22,7 +22,7 @@ type Props = {
   filterTab: "PENDING" | "COMPLETED";
   splitLoading?: boolean;
   onPickDrug: (x: { idPhieuThuoc: string; ten: string; maxQty: number; lieuDung: string }) => void;
-  onAction: (data: { idPhieuThuoc: string; ten: string; qty: number; type: "CONFIRM" | "RETURN" }) => void;
+  onAction: (data: { idPhieuThuoc: string; ten: string; qty: number; type: "CONFIRM" | "RETURN" | "UNCONFIRM" }) => void;
 };
 
 export const MedicationOrders: React.FC<Props> = ({
@@ -132,7 +132,14 @@ export const MedicationOrders: React.FC<Props> = ({
                   </div>
 
                   <div className="flex gap-2">
-                    {canAction ? (
+                    {isShiftConfirmed ? (
+                      <button
+                        onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: qtyInShift, type: "UNCONFIRM" })}
+                        className="w-full bg-amber-50 text-amber-700 py-4 rounded-2xl font-black text-xs uppercase border border-amber-200 active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <i className="fa-solid fa-rotate-left"></i> Huỷ xác nhận dùng thuốc
+                      </button>
+                    ) : canAction ? (
                       <>
                         <button
                           onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: availableQty, type: "CONFIRM" })}

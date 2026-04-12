@@ -79,6 +79,13 @@ export function confirmMedUsage(idPhieuKham: string, idPhieuThuoc: string, shift
   });
 }
 
+export function cancelConfirmedUsage(idPhieuKham: string, idPhieuThuoc: string, shift: string) {
+  return requestNode(`/api/encounters/${idPhieuKham}/med-splits/${idPhieuThuoc}/unconfirm`, {
+    method: "PATCH",
+    body: { shift },
+  });
+}
+
 export function returnMedication(
   idPhieuKham: string,
   idPhieuThuoc: string,

@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
 import {
   autoSplitAllMeds,
+  cancelConfirmedUsage,
   confirmMedUsage,
   getMedSplitsByEncounter,
   returnMedication,
@@ -58,7 +59,7 @@ export const MedicationDetail: React.FC = () => {
     idPhieuThuoc: string;
     ten: string;
     qty: number;
-    type: "CONFIRM" | "RETURN";
+    type: "CONFIRM" | "RETURN" | "UNCONFIRM";
   } | null>(null);
   const [returnReason, setReturnReason] = useState("");
   const [returnQuantity, setReturnQuantity] = useState(1);
@@ -115,6 +116,16 @@ export const MedicationDetail: React.FC = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
       setActionDrug(null);
+    },
+  });
+
+  const unconfirmMutation = useMutation({
+    mutationFn: ({ idPhieuThuoc, shift }: { idPhieuThuoc: string; shift: ShiftType }) =>
+      cancelConfirmedUsage(selectedEncounterId!, idPhieuThuoc, shift),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
+      setActionDrug(null);
+      toast.success("Da huy xac nhan dung thuoc");
     },
   });
 
@@ -337,6 +348,7 @@ export const MedicationDetail: React.FC = () => {
           returnReason={returnReason}
           setReturnReason={setReturnReason}
           confirmMutation={confirmMutation}
+          unconfirmMutation={unconfirmMutation}
           returnMutation={returnMutation}
           activeShift={activeShift}
           onReturn={() => {
