@@ -24,6 +24,88 @@ import { getCurrentShift, SHIFT_OPTIONS } from "@/utils/shifts";
 
 type TabType = "PENDING" | "COMPLETED";
 
+const findFirstShiftWithData = (splits?: Record<string, { splits?: SplitQty }>): ShiftType | null => {
+  if (!splits) return null;
+
+  for (const option of SHIFT_OPTIONS) {
+    const hasData = Object.values(splits).some((item) => Number(item.splits?.[option.id] ?? 0) > 0);
+    if (hasData) return option.id;
+  }
+
+  return null;
+};
+
+const SHIFT_ORDER: ShiftType[] = [
+  ShiftType.MORNING,
+  ShiftType.NOON,
+  ShiftType.AFTERNOON,
+  ShiftType.NIGHT,
+];
+
+const sumSplits = (splits?: Partial<SplitQty>) =>
+  Number(splits?.MORNING ?? 0) +
+  Number(splits?.NOON ?? 0) +
+  Number(splits?.AFTERNOON ?? 0) +
+  Number(splits?.NIGHT ?? 0);
+
+const shuffleShifts = () => {
+  const items = [...SHIFT_ORDER];
+
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+
+  return items;
+};
+
+const distributeUnits = (totalUnits: number, bucketCount: number) => {
+  const result = Array(bucketCount).fill(0);
+  let remaining = totalUnits;
+
+  for (let i = 0; i < bucketCount; i += 1) {
+    const bucketsLeft = bucketCount - i;
+    if (bucketsLeft === 1) {
+      result[i] = remaining;
+      break;
+    }
+
+    const minReserve = bucketsLeft - 1;
+    const maxForCurrent = remaining - minReserve;
+    const value = 1 + Math.floor(Math.random() * Math.max(1, maxForCurrent));
+    result[i] = value;
+    remaining -= value;
+  }
+
+  return result;
+};
+
+const buildRandomFallbackSplits = (maxQty: number): SplitQty => {
+  const empty: SplitQty = {
+    MORNING: 0,
+    NOON: 0,
+    AFTERNOON: 0,
+    NIGHT: 0,
+  };
+
+  if (!(maxQty > 0)) return empty;
+
+  const isIntegerQty = Math.abs(maxQty - Math.round(maxQty)) < 0.000001;
+  const totalUnits = isIntegerQty ? Math.round(maxQty) : Math.max(1, Math.round(maxQty * 2));
+  const unitSize = isIntegerQty ? 1 : 0.5;
+  const maxBuckets = Math.min(4, totalUnits);
+  const bucketCount = Math.max(1, Math.floor(Math.random() * maxBuckets) + 1);
+  const chosenShifts = shuffleShifts().slice(0, bucketCount);
+  const distributed = distributeUnits(totalUnits, bucketCount);
+
+  const splits = { ...empty };
+  chosenShifts.forEach((shift, index) => {
+    splits[shift] = Math.round(distributed[index] * unitSize * 100) / 100;
+  });
+
+  return splits;
+};
+
 export const MedicationDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
 
@@ -151,16 +233,57 @@ export const MedicationDetail: React.FC = () => {
       const items = (donThuocData ?? []).map((item) => ({
         idPhieuThuoc: String(item.IdPhieuThuoc),
         tenThuoc: item.Ten || "",
-        lieuDung: item.LieuDung || "",
+        lieuDung: item.LieuDung?.trim() || item.GhiChuLieuDung?.trim() || "",
         maxQty: Number(item.SoLuong || 0),
       }));
 
       return autoSplitAllMeds(selectedEncounterId!, items);
     },
-    onSuccess: (res: any) => {
-      qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
+    onSuccess: async (res: any) => {
+      const refreshed = await qc.fetchQuery({
+        queryKey: ["med-splits", selectedEncounterId],
+        queryFn: () => getMedSplitsByEncounter(selectedEncounterId!),
+        staleTime: 0,
+      });
+
+      const fallbackCandidates = (donThuocData ?? []).filter((item) => {
+        const idPhieuThuoc = String(item.IdPhieuThuoc);
+        const info = refreshed?.splits?.[idPhieuThuoc];
+        const maxQty = Number(item.SoLuong || 0);
+        const totalAssigned = sumSplits(info?.splits);
+        const isManual = info?.splitSource === "MANUAL";
+
+        if (isManual || !(maxQty > 0)) return false;
+
+        return !info || info.needsReview || totalAssigned <= 0 || totalAssigned - maxQty > 0.000001;
+      });
+
+      let fallbackCount = 0;
+      for (const item of fallbackCandidates) {
+        const splits = buildRandomFallbackSplits(Number(item.SoLuong || 0));
+        if (sumSplits(splits) <= 0) continue;
+
+        await saveMedSplitOne(selectedEncounterId!, String(item.IdPhieuThuoc), splits);
+        fallbackCount += 1;
+      }
+
+      const finalData =
+        fallbackCount > 0
+          ? await qc.fetchQuery({
+              queryKey: ["med-splits", selectedEncounterId],
+              queryFn: () => getMedSplitsByEncounter(selectedEncounterId!),
+              staleTime: 0,
+            })
+          : refreshed;
+
+      setActiveTab("COMPLETED");
+      const firstShiftWithData = findFirstShiftWithData(finalData?.splits);
+      if (firstShiftWithData) {
+        setActiveShift(firstShiftWithData);
+      }
 
       const summary = res?.summary || res?.data?.summary;
+      const suffix = fallbackCount > 0 ? `, fallback ngẫu nhiên: ${fallbackCount}` : "";
       toast.success(
         `Tự động chia xong. OK: ${summary?.autoSuccess ?? 0}, cần kiểm tra: ${summary?.needsReview ?? 0}, lỗi: ${summary?.failed ?? 0}`
       );

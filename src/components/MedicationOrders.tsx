@@ -9,6 +9,9 @@ interface MedSplitInfo {
   splits: SplitQty;
   status?: string;
   confirmedShifts?: string[];
+  needsReview?: boolean;
+  reason?: string | null;
+  splitSource?: "MANUAL" | "RULE" | "AI";
   returnHistory?: Array<{
     quantity: number;
     reason: string;
@@ -50,6 +53,12 @@ export const MedicationOrders: React.FC<Props> = ({
         const idPhieuThuoc = String(it.IdPhieuThuoc);
         const info = splitMap?.[idPhieuThuoc];
         const qtyInShift = info?.splits ? Number(info.splits[key] ?? 0) : 0;
+        const totalAssigned = info?.splits
+          ? Number(info.splits.MORNING ?? 0) +
+            Number(info.splits.NOON ?? 0) +
+            Number(info.splits.AFTERNOON ?? 0) +
+            Number(info.splits.NIGHT ?? 0)
+          : 0;
         const totalReturned =
           info?.returnHistory?.reduce((sum, item) => {
             return item.shift === shift ? sum + item.quantity : sum;
@@ -65,6 +74,10 @@ export const MedicationOrders: React.FC<Props> = ({
           hasBeenSplit,
           currentStatus,
           qtyInShift,
+          totalAssigned,
+          needsReview: info?.needsReview ?? false,
+          reviewReason: info?.reason ?? null,
+          splitSource: info?.splitSource,
           availableQty,
           totalReturned,
           isShiftConfirmed,
@@ -90,7 +103,7 @@ export const MedicationOrders: React.FC<Props> = ({
         </div>
       )}
 
-      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, availableQty, totalReturned, hasBeenSplit, currentStatus, isShiftConfirmed }) => {
+      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, totalAssigned, needsReview, reviewReason, splitSource, availableQty, totalReturned, hasBeenSplit, currentStatus, isShiftConfirmed }) => {
         const canAction = availableQty > 0 && !isShiftConfirmed;
 
         return (
@@ -164,6 +177,19 @@ export const MedicationOrders: React.FC<Props> = ({
                     <span className="rounded-xl border border-slate-200/50 bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-600">
                       Ca này: {qtyInShift}
                     </span>
+                    <span className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-1 text-[10px] font-black uppercase text-sky-700">
+                      Tổng đã chia: {totalAssigned}
+                    </span>
+                    {splitSource && (
+                      <span className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-1 text-[10px] font-black uppercase text-violet-700">
+                        Nguồn: {splitSource}
+                      </span>
+                    )}
+                    {needsReview && (
+                      <span className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase text-amber-700">
+                        AI cần xem lại
+                      </span>
+                    )}
                     {totalReturned > 0 && (
                       <span className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-1 text-[10px] font-black uppercase text-rose-600">
                         Đã trả: {totalReturned}
@@ -175,7 +201,13 @@ export const MedicationOrders: React.FC<Props> = ({
                   </div>
 
                   <div className="flex gap-2">
-                    {isShiftConfirmed ? (
+                    {totalAssigned <= 0 ? (
+                      <div className="w-full rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-4 text-center text-[10px] font-black uppercase italic tracking-[0.18em] text-amber-700">
+                        {reviewReason
+                          ? `AI CHƯA CHIA ĐƯỢC • ${reviewReason}`
+                          : "AI CHƯA CHIA ĐƯỢC • CẦN KIỂM TRA VÀ CHIA THỦ CÔNG"}
+                      </div>
+                    ) : isShiftConfirmed ? (
                       <button
                         onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: qtyInShift, type: "UNCONFIRM" })}
                         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 py-4 text-xs font-black uppercase text-amber-700 active:scale-95"

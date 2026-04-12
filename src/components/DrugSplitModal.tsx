@@ -130,10 +130,6 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
 
           <div className="relative flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">
-                <i className="fa-solid fa-pills text-[11px]"></i>
-                Chia thuốc theo ca
-              </div>
               <h2 className="text-lg font-black tracking-tight text-slate-900 md:text-3xl">{safeDrug.ten}</h2>
             </div>
 
@@ -147,6 +143,42 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-7 md:py-6">
+          <div className="mb-4 rounded-[24px] border border-slate-200 bg-slate-50/80 p-3.5 md:mb-5 md:rounded-[28px] md:p-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 md:gap-4">
+                <div className="rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 md:px-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Tổng đơn</div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{safeDrug.maxQty}</div>
+                </div>
+                <div className="rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 md:px-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Đã chia</div>
+                  <div className="mt-1 text-xl font-black text-primary">{totalSplits}</div>
+                </div>
+                <div className="rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 md:px-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Còn lại</div>
+                  <div className={`mt-1 text-xl font-black ${remainingQty === 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    {remainingQty}
+                  </div>
+                </div>
+              </div>
+
+              <div className="min-w-0 md:min-w-[180px]">
+                <div className="mb-2 flex items-center justify-between text-[11px] font-black uppercase tracking-[0.18em]">
+                  <span className="text-slate-400">Tiến độ</span>
+                  <span className={isTotalMatched ? "text-emerald-600" : "text-rose-600"}>
+                    {isTotalMatched ? "Khớp số lượng" : "Chưa khớp"}
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className={`h-full rounded-full transition-all ${isTotalMatched ? "bg-emerald-500" : "bg-rose-500"}`}
+                    style={{ width: `${completionRatio}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 md:gap-4">
             {SHIFT_OPTIONS.map((option) => {
               const style = SHIFT_STYLES[option.id];

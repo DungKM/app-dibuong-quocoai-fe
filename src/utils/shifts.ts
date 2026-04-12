@@ -7,12 +7,20 @@ export const SHIFT_OPTIONS = [
   { id: ShiftType.NIGHT, label: "Đêm", icon: "fa-moon", timeRange: "17h - 23:59" },
 ] as const;
 
-export const getCurrentShift = (date: Date = new Date()): ShiftType => {
-  const hour = date.getHours();
-  const minute = date.getMinutes();
+export const SHIFT_LABELS: Record<ShiftType, string> = {
+  [ShiftType.MORNING]: "Sáng",
+  [ShiftType.NOON]: "Trưa",
+  [ShiftType.AFTERNOON]: "Chiều",
+  [ShiftType.NIGHT]: "Đêm",
+};
 
+export const getShiftByTime = (hour: number, minute = 0): ShiftType => {
   if (hour < 11 || (hour === 11 && minute < 30)) return ShiftType.MORNING;
   if (hour < 13) return ShiftType.NOON;
   if (hour < 17) return ShiftType.AFTERNOON;
   return ShiftType.NIGHT;
+};
+
+export const getCurrentShift = (date: Date = new Date()): ShiftType => {
+  return getShiftByTime(date.getHours(), date.getMinutes());
 };
