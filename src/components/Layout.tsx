@@ -7,7 +7,6 @@ import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { env } from "@/config/env";
 import { authStorage } from '@/services/auth.api';
-import { useNavigate } from "react-router-dom";
 import { ReturnNotificationsModal } from "@/components/ReturnNotificationsModal";
 import { getNotifications } from "@/services/notifications.api";
 
@@ -19,10 +18,10 @@ export const Layout: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNoti, setShowNoti] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const navigate = useNavigate();
+  const idKhoa = user?.idKhoa;
 
   useEffect(() => {
-    if (!user?.idKhoa) return;
+    if (!idKhoa) return;
 
     (async () => {
       try {
@@ -33,10 +32,10 @@ export const Layout: React.FC = () => {
         console.log("Load notifications error:", e);
       }
     })();
-  }, [user?.idKhoa]);
+  }, [idKhoa]);
 
   useEffect(() => {
-    if (!user?.idKhoa) return;
+    if (!idKhoa) return;
 
     const socket = io(env.API_BACKEND_AUTH_NODE_URL, {
       path: "/socket.io",
@@ -45,7 +44,7 @@ export const Layout: React.FC = () => {
     });
 
     socket.on("connect", () => {
-      socket.emit("join_khoa", user.idKhoa);
+      socket.emit("join_khoa", idKhoa);
     });
 
     socket.on("new_notification", (data) => {
@@ -58,8 +57,12 @@ export const Layout: React.FC = () => {
       console.log("❌ connect_error:", e?.message || e);
     });
 
-    return () => socket.disconnect();
-  }, [user?.idKhoa]);
+    return () => {
+      socket.disconnect();
+    };
+  }, [idKhoa]);
+
+  if (!user) return null;
 
   const isAdmin = user.role === UserRole.ADMIN;
   const isDoctor = user.role === UserRole.DOCTOR;
