@@ -81,7 +81,7 @@ export const MedicationDetail: React.FC = () => {
         videoRef.current.play();
       }
     } catch {
-      setCameraError("Loi camera");
+      setCameraError("Lỗi camera");
     }
   };
 
@@ -126,7 +126,7 @@ export const MedicationDetail: React.FC = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
       setActionDrug(null);
-      toast.success("Da huy xac nhan dung thuoc");
+      toast.success("Đã hủy xác nhận dùng thuốc");
     },
   });
 
@@ -142,20 +142,9 @@ export const MedicationDetail: React.FC = () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
       setActionDrug(null);
       setReturnReason("");
-      toast.success("Da gui yeu cau tra thuoc");
+      toast.success("Đã gửi yêu cầu trả thuốc");
     },
   });
-
-  const totalSplits = useMemo(() => {
-    if (!selectedDrug) return 0;
-
-    return (
-      Number(selectedDrug.splits.MORNING || 0) +
-      Number(selectedDrug.splits.NOON || 0) +
-      Number(selectedDrug.splits.AFTERNOON || 0) +
-      Number(selectedDrug.splits.NIGHT || 0)
-    );
-  }, [selectedDrug]);
 
   const autoSplitMutation = useMutation({
     mutationFn: async () => {
@@ -173,11 +162,11 @@ export const MedicationDetail: React.FC = () => {
 
       const summary = res?.summary || res?.data?.summary;
       toast.success(
-        `Tu dong chia xong. OK: ${summary?.autoSuccess ?? 0}, can kiem tra: ${summary?.needsReview ?? 0}, loi: ${summary?.failed ?? 0}`
+        `Tự động chia xong. OK: ${summary?.autoSuccess ?? 0}, cần kiểm tra: ${summary?.needsReview ?? 0}, lỗi: ${summary?.failed ?? 0}`
       );
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || "Tu dong chia ca that bai");
+      toast.error(error?.response?.data?.message || error?.message || "Tự động chia ca thất bại");
     },
   });
 
@@ -185,10 +174,10 @@ export const MedicationDetail: React.FC = () => {
     mutationFn: (shift: ShiftType) => confirmAllMedUsage(selectedEncounterId!, shift),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
-      toast.success("Da xac nhan dung toan bo thuoc trong ca");
+      toast.success("Đã xác nhận dùng toàn bộ thuốc trong ca");
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Xac nhan dung toan bo that bai");
+      toast.error(error?.message || "Xác nhận dùng toàn bộ thất bại");
     },
   });
 
@@ -211,41 +200,41 @@ export const MedicationDetail: React.FC = () => {
   if (!currentUser) return null;
 
   return (
-    <div className="pb-24 mx-auto space-y-6">
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 sticky top-16 z-30">
+    <div className="mx-auto space-y-6 pb-24">
+      <div className="sticky top-16 z-30 flex flex-col items-start justify-between gap-6 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm md:flex-row md:items-center">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:text-primary transition flex items-center justify-center border border-slate-100"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-slate-50 text-slate-400 transition hover:text-primary"
           >
             <i className="fa-solid fa-arrow-left"></i>
           </button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-              {tenBenhNhan || "Benh nhan"}
+            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">
+              {tenBenhNhan || "Bệnh nhân"}
             </h1>
-            <div className="flex items-center gap-3 text-xs font-bold text-slate-400 mt-0.5">
-              <span className="text-primary font-mono">{maBenhNhan || "--"}</span>
+            <div className="mt-0.5 flex items-center gap-3 text-xs font-bold text-slate-400">
+              <span className="font-mono text-primary">{maBenhNhan || "--"}</span>
               <span>•</span>
-              <span className="uppercase">Don thuoc</span>
+              <span className="uppercase">Đơn thuốc dùng</span>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
+        {/* <div className="flex gap-2 w-full md:w-auto">
           {isVerified ? (
             <div className="flex-1 md:flex-none bg-green-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-green-200">
-              <i className="fa-solid fa-shield-check text-base"></i> Da xac thuc BN
+              <i className="fa-solid fa-shield-check text-base"></i> Đã xác thực BN
             </div>
           ) : (
             <button
               onClick={() => setIsScanning(true)}
               className="flex-1 md:flex-none bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-200 hover:bg-black transition"
             >
-              <i className="fa-solid fa-qrcode text-base"></i> Quet ma xac nhan
+              <i className="fa-solid fa-qrcode text-base"></i> Quét mã xác nhận
             </button>
           )}
-        </div>
+        </div> */}
       </div>
 
       <EncounterList
@@ -258,15 +247,17 @@ export const MedicationDetail: React.FC = () => {
       <div className="flex border-b border-slate-200">
         <button
           onClick={() => setActiveTab("PENDING")}
-          className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${activeTab === "PENDING" ? "border-primary text-primary" : "border-transparent text-slate-400"
-            }`}
+          className={`flex-1 border-b-2 py-4 text-xs font-black uppercase tracking-widest transition-all ${
+            activeTab === "PENDING" ? "border-primary text-primary" : "border-transparent text-slate-400"
+          }`}
         >
           Chưa chia ca
         </button>
         <button
           onClick={() => setActiveTab("COMPLETED")}
-          className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${activeTab === "COMPLETED" ? "border-primary text-primary" : "border-transparent text-slate-400"
-            }`}
+          className={`flex-1 border-b-2 py-4 text-xs font-black uppercase tracking-widest transition-all ${
+            activeTab === "COMPLETED" ? "border-primary text-primary" : "border-transparent text-slate-400"
+          }`}
         >
           Đã chia ca
         </button>
@@ -275,15 +266,15 @@ export const MedicationDetail: React.FC = () => {
       <button
         onClick={() => autoSplitMutation.mutate()}
         disabled={!selectedEncounterId || autoSplitMutation.isPending}
-        className="flex-1 md:flex-none bg-primary text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-xs font-black uppercase text-white shadow-lg disabled:opacity-50 md:flex-none"
       >
         <i className="fa-solid fa-wand-magic-sparkles text-base"></i>
-        {autoSplitMutation.isPending ? "Dang tu dong chia..." : "Tu dong chia toan bo"}
+        {autoSplitMutation.isPending ? "Đang tự động chia..." : "Tự động chia toàn bộ"}
       </button>
 
       {activeTab === "COMPLETED" && (
         <div className="mx-4 space-y-3 animate-in fade-in duration-300">
-          <div className="bg-slate-100/50 p-1 rounded-2xl flex gap-1 shadow-inner">
+          <div className="flex gap-1 rounded-2xl bg-slate-100/50 p-1 shadow-inner">
             {SHIFT_OPTIONS.map((option) => {
               const hasDataInShift = Object.values(splitData?.splits ?? {}).some(
                 (item) => Number(item.splits[option.id as keyof SplitQty] ?? 0) > 0
@@ -295,16 +286,18 @@ export const MedicationDetail: React.FC = () => {
                   type="button"
                   onClick={() => setActiveShift(option.id)}
                   title={`${option.label} (${option.timeRange})`}
-                  className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
-                    }`}
+                  className={`relative flex-1 rounded-xl py-3 text-[10px] font-black uppercase transition-all flex flex-col items-center gap-1 ${
+                    activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
+                  }`}
                 >
                   {hasDataInShift && (
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm"></span>
+                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm"></span>
                   )}
 
                   <i
-                    className={`fa-solid ${option.icon} ${hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""
-                      }`}
+                    className={`fa-solid ${option.icon} ${
+                      hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""
+                    }`}
                   ></i>
                   <span className={hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""}>
                     {option.label}
@@ -319,7 +312,7 @@ export const MedicationDetail: React.FC = () => {
               <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
                 Xác nhận nhanh
               </div>
-              <div className="text-[11px] font-bold text-emerald-900 truncate">
+              <div className="truncate text-[11px] font-bold text-emerald-900">
                 Dùng toàn bộ thuốc của ca đang chọn
               </div>
             </div>
@@ -328,7 +321,7 @@ export const MedicationDetail: React.FC = () => {
               type="button"
               onClick={() => confirmAllMutation.mutate(activeShift)}
               disabled={!selectedEncounterId || !hasConfirmableMedsInActiveShift || confirmAllMutation.isPending}
-              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-md shadow-emerald-100 transition disabled:opacity-50 disabled:shadow-none"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-md shadow-emerald-100 transition disabled:opacity-50 disabled:shadow-none"
             >
               <i className="fa-solid fa-check-double"></i>
               {confirmAllMutation.isPending ? "Đang xử lý..." : `Xác nhận ca ${activeShiftOption?.label ?? ""}`}

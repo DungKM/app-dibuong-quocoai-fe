@@ -27,15 +27,15 @@ export const DrugActionModal = ({
 
   const icon = isConfirm ? "fa-hand-holding-medical" : isUnconfirm ? "fa-rotate-left" : "fa-undo";
   const title = isConfirm
-    ? "Xac nhan dung thuoc"
+    ? "Xác nhận dùng thuốc"
     : isUnconfirm
-      ? "Huy xac nhan dung thuoc"
-      : "Yeu cau tra thuoc";
+      ? "Hủy xác nhận dùng thuốc"
+      : "Yêu cầu trả thuốc";
   const primaryLabel = isConfirm
-    ? "Xac nhan dung thuoc"
+    ? "Xác nhận dùng thuốc"
     : isUnconfirm
-      ? "Dong y huy xac nhan"
-      : "Dong y tra thuoc";
+      ? "Đồng ý hủy xác nhận"
+      : "Đồng ý trả thuốc";
   const primaryClass = isConfirm
     ? "bg-green-600 shadow-green-100"
     : isUnconfirm
@@ -56,14 +56,14 @@ export const DrugActionModal = ({
         <div className="bg-slate-50 rounded-2xl p-4 mb-6">
           <div className="text-sm font-bold text-slate-900 text-center uppercase leading-tight">{actionDrug.ten}</div>
           <div className="text-[10px] font-black text-primary mt-1 uppercase text-center tracking-widest">
-            So luong trong ca: {actionDrug.qty}
+            Số lượng trong ca: {actionDrug.qty}
           </div>
         </div>
 
         {isReturn && (
           <div className="space-y-4 mb-6">
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">So luong thuc tra</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Số lượng thực trả</label>
               <input
                 type="number"
                 max={actionDrug.qty}
@@ -76,24 +76,24 @@ export const DrugActionModal = ({
 
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Ly do tra lai</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Lý do trả lại</label>
                 <select
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
                   className="w-full bg-slate-100 border-none rounded-2xl px-4 py-3 font-bold text-sm focus:ring-2 focus:ring-red-500 transition-all outline-none"
                 >
-                  <option value="">-- Chon ly do --</option>
-                  <option value="Benh nhan tu choi">Benh nhan tu choi</option>
-                  <option value="Ra vien">Benh nhan ra vien</option>
-                  <option value="Bac si ngung thuoc">Bac si ngung thuoc</option>
-                  <option value="Khac">Ly do khac...</option>
+                  <option value="">-- Chọn lý do --</option>
+                  <option value="Benh nhan tu choi">Bệnh nhân từ chối</option>
+                  <option value="Ra vien">Bệnh nhân ra viện</option>
+                  <option value="Bac si ngung thuoc">Bác sĩ ngưng thuốc</option>
+                  <option value="Khac">Lý do khác...</option>
                 </select>
               </div>
 
               {returnReason === "Khac" && (
                 <div className="animate-in slide-in-from-top-2 duration-200">
                   <textarea
-                    placeholder="Nhap ly do cu the..."
+                    placeholder="Nhập lý do cụ thể..."
                     rows={2}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-red-400"
                     onChange={(e) => {
@@ -132,7 +132,7 @@ export const DrugActionModal = ({
             onClick={() => setActionDrug(null)}
             className="font-black text-[10px] text-slate-400 uppercase py-2 hover:text-slate-600 transition"
           >
-            Huy bo
+            Hủy bỏ
           </button>
         </div>
       </div>
