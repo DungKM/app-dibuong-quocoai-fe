@@ -18,6 +18,7 @@ export const MedicationList: React.FC = () => {
   const KHOA_OPTIONS = [
     { id: user?.idHis || "", name: user?.tenKhoa || "Khoa" },
   ];
+  const [searchTerm, setSearchTerm] = useState("");
   const [activeShift, setActiveShift] = useState<ShiftType>(ShiftType.MORNING);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [idKhoa, setIdKhoa] = useState<string>(KHOA_OPTIONS[0].id);
@@ -228,6 +229,29 @@ export const MedicationList: React.FC = () => {
     });
     return result;
   }, [wardLayout]);
+
+  const filteredWard = useMemo(() => {
+    const s = searchTerm.trim().toLowerCase();
+    if (!s) return wardLayout;
+
+    return wardLayout.map((room) => ({
+      ...room,
+      beds: room.beds.map((bed) => {
+        const matchingVisits = bed.visits.filter(
+          (visit) =>
+            (visit.patientName ?? "").toLowerCase().includes(s) ||
+            String(visit.patientCode ?? "").toLowerCase().includes(s)
+        );
+
+        return {
+          ...bed,
+          visits: matchingVisits,
+          isOccupied: matchingVisits.length > 0,
+        };
+      }),
+    }));
+  }, [wardLayout, searchTerm]);
+
   const isClosed = false;
   const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
   const error = wardError || medsError;
@@ -335,8 +359,21 @@ export const MedicationList: React.FC = () => {
       </div>
 
       {/* Grid Phòng và Giường: Tự động đổi số cột */}
+      <div className="flex justify-start">
+        <div className="relative w-full md:w-96 group">
+          <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors"></i>
+          <input
+            type="text"
+            placeholder="Tìm tên bệnh nhân, mã số..."
+            className="w-full pl-12 pr-6 py-4 rounded-3xl border-2 border-slate-200 bg-white text-slate-900 font-black text-sm placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-        {wardLayout.map((room) => (
+        {filteredWard.map((room) => (
           <section key={room.room} className="space-y-4">
             <div className="flex items-center gap-3 md:gap-4 px-2 md:px-4">
               <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-[14px] md:rounded-[18px] flex items-center justify-center font-black text-lg md:text-xl shadow-lg border-2 border-white transform rotate-3">
@@ -357,6 +394,7 @@ export const MedicationList: React.FC = () => {
                   visits={bed.visits}
                   activeShift={activeShift}
                   isClosed={isClosed}
+                  highlightSearch={!!searchTerm && bed.visits.length > 0}
                 />
               ))}
             </div>

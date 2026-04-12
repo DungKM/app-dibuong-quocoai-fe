@@ -8,7 +8,8 @@ export const MedicationBedCard: React.FC<{
     visits?: MedVisitLite[];
     activeShift: ShiftType;
     isClosed: boolean;
-}> = ({ bedCode, visits = [], activeShift, isClosed }) => {
+    highlightSearch?: boolean;
+}> = ({ bedCode, visits = [], activeShift, isClosed, highlightSearch = false }) => {
     const navigate = useNavigate();
     const isOccupied = visits.length > 0;
 
@@ -21,7 +22,9 @@ export const MedicationBedCard: React.FC<{
 
     return (
         <div className={`relative min-h-[176px] rounded-[32px] border-2 transition-all duration-300 p-4 flex flex-col gap-3 ${isOccupied
-            ? "bg-white border-slate-200 shadow-sm"
+            ? highlightSearch
+                ? "bg-white border-red-300 shadow-[0_16px_36px_rgba(239,68,68,0.22)]"
+                : "bg-white border-slate-200 shadow-sm"
             : "bg-slate-50 border-dashed border-slate-500"
             }`}>
             <div className="flex justify-between items-start">
@@ -52,7 +55,7 @@ export const MedicationBedCard: React.FC<{
                                     }).toString();
                                     navigate(`/medication/${visit.id}?${qs}`);
                                 }}
-                                className={`group p-3 rounded-[24px] border transition-all cursor-pointer hover:shadow-md ${getPatientStatusClasses(current)}`}
+                                className={`group p-3 rounded-[24px] border transition-all cursor-pointer hover:shadow-md ${getPatientStatusClasses(current)} ${highlightSearch ? "ring-2 ring-red-200 shadow-[0_10px_24px_rgba(239,68,68,0.16)]" : ""}`}
                             >
                                 <div className="mb-2">
                                     <h3 className="text-sm font-black text-slate-900 uppercase truncate group-hover:text-primary transition-colors">
