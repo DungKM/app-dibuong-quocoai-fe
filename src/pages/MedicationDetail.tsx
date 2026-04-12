@@ -182,35 +182,31 @@ export const MedicationDetail: React.FC = () => {
   });
 
   const confirmAllMutation = useMutation({
-    mutationFn: async () => {
-      const shifts = SHIFT_OPTIONS.map((option) => option.id);
-      return Promise.all(shifts.map((shift) => confirmAllMedUsage(selectedEncounterId!, shift)));
-    },
+    mutationFn: (shift: ShiftType) => confirmAllMedUsage(selectedEncounterId!, shift),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
-      toast.success("Da xac nhan dung toan bo thuoc tat ca cac ca");
+      toast.success("Da xac nhan dung toan bo thuoc trong ca");
     },
     onError: (error: any) => {
       toast.error(error?.message || "Xac nhan dung toan bo that bai");
     },
   });
 
-  const hasConfirmableMeds = useMemo(() => {
+  const activeShiftOption = SHIFT_OPTIONS.find((option) => option.id === activeShift);
+  const hasConfirmableMedsInActiveShift = useMemo(() => {
     const splitMap = splitData?.splits ?? {};
-    const shiftKeys: Array<keyof SplitQty> = ["MORNING", "NOON", "AFTERNOON", "NIGHT"];
+    const key = activeShift as keyof SplitQty;
 
     return Object.values(splitMap).some((item) => {
-      return shiftKeys.some((shiftKey) => {
-        const qtyInShift = Number(item.splits?.[shiftKey] ?? 0);
-        const returnedQty =
-          item.returnHistory?.reduce((sum, historyItem: any) => {
-            return historyItem.shift === shiftKey ? sum + Number(historyItem.quantity ?? 0) : sum;
-          }, 0) ?? 0;
-        const isConfirmed = item.confirmedShifts?.includes(shiftKey) ?? false;
-        return qtyInShift - returnedQty > 0 && !isConfirmed;
-      });
+      const qtyInShift = Number(item.splits?.[key] ?? 0);
+      const returnedQty =
+        item.returnHistory?.reduce((sum, historyItem: any) => {
+          return historyItem.shift === activeShift ? sum + Number(historyItem.quantity ?? 0) : sum;
+        }, 0) ?? 0;
+      const isConfirmed = item.confirmedShifts?.includes(activeShift) ?? false;
+      return qtyInShift - returnedQty > 0 && !isConfirmed;
     });
-  }, [splitData]);
+  }, [activeShift, splitData]);
 
   if (!currentUser) return null;
 
@@ -262,17 +258,15 @@ export const MedicationDetail: React.FC = () => {
       <div className="flex border-b border-slate-200">
         <button
           onClick={() => setActiveTab("PENDING")}
-          className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${
-            activeTab === "PENDING" ? "border-primary text-primary" : "border-transparent text-slate-400"
-          }`}
+          className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${activeTab === "PENDING" ? "border-primary text-primary" : "border-transparent text-slate-400"
+            }`}
         >
           Chưa chia ca
         </button>
         <button
           onClick={() => setActiveTab("COMPLETED")}
-          className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${
-            activeTab === "COMPLETED" ? "border-primary text-primary" : "border-transparent text-slate-400"
-          }`}
+          className={`flex-1 py-4 font-black text-xs uppercase tracking-widest transition-all border-b-2 ${activeTab === "COMPLETED" ? "border-primary text-primary" : "border-transparent text-slate-400"
+            }`}
         >
           Đã chia ca
         </button>
@@ -301,18 +295,16 @@ export const MedicationDetail: React.FC = () => {
                   type="button"
                   onClick={() => setActiveShift(option.id)}
                   title={`${option.label} (${option.timeRange})`}
-                  className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${
-                    activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
-                  }`}
+                  className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all flex flex-col items-center gap-1 relative ${activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:bg-white/40"
+                    }`}
                 >
                   {hasDataInShift && (
                     <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm"></span>
                   )}
 
                   <i
-                    className={`fa-solid ${option.icon} ${
-                      hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""
-                    }`}
+                    className={`fa-solid ${option.icon} ${hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""
+                      }`}
                   ></i>
                   <span className={hasDataInShift && activeShift !== option.id ? "text-slate-600" : ""}>
                     {option.label}
@@ -325,21 +317,21 @@ export const MedicationDetail: React.FC = () => {
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
             <div className="min-w-0">
               <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                Xac nhan nhanh
+                Xác nhận nhanh
               </div>
               <div className="text-[11px] font-bold text-emerald-900 truncate">
-                Dung toan bo thuoc cua tat ca cac ca
+                Dùng toàn bộ thuốc của ca đang chọn
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() => confirmAllMutation.mutate()}
-              disabled={!selectedEncounterId || !hasConfirmableMeds || confirmAllMutation.isPending}
+              onClick={() => confirmAllMutation.mutate(activeShift)}
+              disabled={!selectedEncounterId || !hasConfirmableMedsInActiveShift || confirmAllMutation.isPending}
               className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-md shadow-emerald-100 transition disabled:opacity-50 disabled:shadow-none"
             >
               <i className="fa-solid fa-check-double"></i>
-              {confirmAllMutation.isPending ? "Dang xu ly..." : "Xac nhan tat ca"}
+              {confirmAllMutation.isPending ? "Đang xử lý..." : `Xác nhận ca ${activeShiftOption?.label ?? ""}`}
             </button>
           </div>
         </div>

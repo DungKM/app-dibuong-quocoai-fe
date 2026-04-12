@@ -1,16 +1,67 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { SHIFT_OPTIONS } from "@/utils/shifts";
 
 export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutation }: any) => {
-  if (!selectedDrug) return null;
+  const safeDrug = selectedDrug ?? {
+    idPhieuThuoc: "",
+    ten: "",
+    maxQty: 0,
+    splits: {
+      MORNING: 0,
+      NOON: 0,
+      AFTERNOON: 0,
+      NIGHT: 0,
+    },
+  };
+
+  const formatSplitValue = (value: number) => {
+    if (!Number.isFinite(value)) return "0";
+    return Number.isInteger(value) ? String(value) : String(value);
+  };
+
+  const parseSplitValue = (raw: string) => {
+    const normalized = raw.replace(/\s+/g, "").replace(",", ".");
+    if (!normalized) return 0;
+
+    const value = Number(normalized);
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  };
+
+  const [draftSplits, setDraftSplits] = useState<Record<string, string>>(() => ({
+    MORNING: formatSplitValue(Number(safeDrug.splits.MORNING ?? 0)),
+    NOON: formatSplitValue(Number(safeDrug.splits.NOON ?? 0)),
+    AFTERNOON: formatSplitValue(Number(safeDrug.splits.AFTERNOON ?? 0)),
+    NIGHT: formatSplitValue(Number(safeDrug.splits.NIGHT ?? 0)),
+  }));
+
+  useEffect(() => {
+    setDraftSplits({
+      MORNING: formatSplitValue(Number(safeDrug.splits.MORNING ?? 0)),
+      NOON: formatSplitValue(Number(safeDrug.splits.NOON ?? 0)),
+      AFTERNOON: formatSplitValue(Number(safeDrug.splits.AFTERNOON ?? 0)),
+      NIGHT: formatSplitValue(Number(safeDrug.splits.NIGHT ?? 0)),
+    });
+  }, [
+    selectedDrug?.idPhieuThuoc,
+    safeDrug.splits.MORNING,
+    safeDrug.splits.NOON,
+    safeDrug.splits.AFTERNOON,
+    safeDrug.splits.NIGHT,
+  ]);
 
   const totalSplits =
-    selectedDrug.splits.MORNING +
-    selectedDrug.splits.NOON +
-    selectedDrug.splits.AFTERNOON +
-    selectedDrug.splits.NIGHT;
+    safeDrug.splits.MORNING +
+    safeDrug.splits.NOON +
+    safeDrug.splits.AFTERNOON +
+    safeDrug.splits.NIGHT;
+  const isTotalMatched = useMemo(
+    () => Math.abs(totalSplits - safeDrug.maxQty) < 0.000001,
+    [safeDrug.maxQty, totalSplits]
+  );
+
+  if (!selectedDrug) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -20,7 +71,7 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
         <div className="flex justify-between items-start mb-6">
           <div>
             <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Chia thuoc theo ca</div>
-            <h2 className="text-2xl font-black text-slate-900 mt-1">{selectedDrug.ten}</h2>
+            <h2 className="text-2xl font-black text-slate-900 mt-1">{safeDrug.ten}</h2>
           </div>
           <button
             onClick={() => setSelectedDrug(null)}
@@ -42,16 +93,25 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
               </div>
               <div className="text-[11px] font-bold text-slate-400 mb-2">{option.timeRange}</div>
               <input
-                type="number"
-                step="0.5"
-                min={0}
-                value={selectedDrug.splits[option.id]}
-                onChange={(e) =>
+                type="text"
+                inputMode="decimal"
+                value={draftSplits[option.id]}
+                onChange={(e) => {
+                  const raw = e.target.value;
+
+                  setDraftSplits((prev) => ({
+                    ...prev,
+                    [option.id]: raw,
+                  }));
+
+                  const parsed = parseSplitValue(raw);
+                  if (parsed == null) return;
+
                   setSelectedDrug((prev: any) => ({
                     ...prev,
-                    splits: { ...prev.splits, [option.id]: Number(e.target.value || 0) },
-                  }))
-                }
+                    splits: { ...prev.splits, [option.id]: parsed },
+                  }));
+                }}
                 className="w-full bg-transparent font-black text-2xl text-slate-900 outline-none"
               />
             </div>
@@ -61,14 +121,14 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
         <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
           <div>
             <div className="text-[10px] font-black text-slate-400 uppercase">Trang thai chia</div>
-            <div className={`text-xl font-black ${totalSplits === selectedDrug.maxQty ? "text-emerald-500" : "text-red-500"}`}>
-              {totalSplits} / {selectedDrug.maxQty}
+            <div className={`text-xl font-black ${isTotalMatched ? "text-emerald-500" : "text-red-500"}`}>
+              {totalSplits} / {safeDrug.maxQty}
             </div>
           </div>
           <button
-            disabled={totalSplits !== selectedDrug.maxQty || saveSplitMutation.isPending}
+            disabled={!isTotalMatched || saveSplitMutation.isPending}
             onClick={() => {
-              saveSplitMutation.mutate({ idPhieuThuoc: selectedDrug.idPhieuThuoc, splits: selectedDrug.splits });
+              saveSplitMutation.mutate({ idPhieuThuoc: safeDrug.idPhieuThuoc, splits: safeDrug.splits });
               setSelectedDrug(null);
             }}
             className="px-8 py-4 bg-primary text-white rounded-[24px] font-black uppercase text-xs shadow-lg shadow-blue-100 disabled:opacity-50 transition-all active:scale-95"
