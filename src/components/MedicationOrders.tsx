@@ -34,7 +34,15 @@ type Props = {
     hamLuong?: string | null;
     loaiThuoc?: string | null;
   }) => void;
-  onAction: (data: { idPhieuThuoc: string; ten: string; qty: number; type: "CONFIRM" | "RETURN" | "UNCONFIRM" }) => void;
+  onAction: (data: {
+    idPhieuThuoc: string;
+    ten: string;
+    qty: number;
+    type: "CONFIRM" | "RETURN" | "UNCONFIRM";
+    donVi?: string | null;
+    hamLuong?: string | null;
+    loaiThuoc?: string | null;
+  }) => void;
 };
 
 export const MedicationOrders: React.FC<Props> = ({
@@ -265,7 +273,17 @@ export const MedicationOrders: React.FC<Props> = ({
                       </div>
                     ) : isShiftConfirmed ? (
                       <button
-                        onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: qtyInShift, type: "UNCONFIRM" })}
+                        onClick={() =>
+                          onAction({
+                            idPhieuThuoc,
+                            ten: it.Ten,
+                            qty: qtyInShift,
+                            type: "UNCONFIRM",
+                            donVi: it.DonVi,
+                            hamLuong: it.HamLuong,
+                            loaiThuoc: it.LoaiThuoc,
+                          })
+                        }
                         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 py-4 text-xs font-black uppercase text-amber-700 active:scale-95"
                       >
                         <i className="fa-solid fa-rotate-left"></i>
@@ -274,14 +292,34 @@ export const MedicationOrders: React.FC<Props> = ({
                     ) : canAction ? (
                       <>
                         <button
-                          onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: availableQty, type: "CONFIRM" })}
+                          onClick={() =>
+                            onAction({
+                              idPhieuThuoc,
+                              ten: it.Ten,
+                              qty: availableQty,
+                              type: "CONFIRM",
+                              donVi: it.DonVi,
+                              hamLuong: it.HamLuong,
+                              loaiThuoc: it.LoaiThuoc,
+                            })
+                          }
                           className="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-100 active:scale-95"
                         >
                           <i className="fa-solid fa-check-circle"></i>
                           Dùng {availableQty} {it.DonVi}
                         </button>
                         <button
-                          onClick={() => onAction({ idPhieuThuoc, ten: it.Ten, qty: availableQty, type: "RETURN" })}
+                          onClick={() =>
+                            onAction({
+                              idPhieuThuoc,
+                              ten: it.Ten,
+                              qty: availableQty,
+                              type: "RETURN",
+                              donVi: it.DonVi,
+                              hamLuong: it.HamLuong,
+                              loaiThuoc: it.LoaiThuoc,
+                            })
+                          }
                           className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 py-4 text-xs font-black uppercase text-rose-600 active:scale-95"
                         >
                           <i className="fa-solid fa-reply"></i>

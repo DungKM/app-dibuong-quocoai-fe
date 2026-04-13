@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DatePicker from "react-datepicker";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
 
 import { MedicationBedCard } from "@/components/MedicationBedCard";
@@ -15,6 +16,7 @@ import { getCurrentShift, SHIFT_OPTIONS } from "@/utils/shifts";
 
 export const MedicationList: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const khoaOptions = [{ id: user?.idHis || "", name: user?.tenKhoa || "Khoa" }];
 
@@ -308,7 +310,16 @@ export const MedicationList: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-full lg:w-auto">
+        <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">
+          <button
+            type="button"
+            onClick={() => navigate("/medication/history")}
+            className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-primary"
+          >
+            <i className="fa-solid fa-table-list text-sm"></i>
+            Lịch sử xác nhận
+          </button>
+
           <div className="relative w-full lg:w-[240px]">
             <DatePicker
               selected={selectedDateObj}

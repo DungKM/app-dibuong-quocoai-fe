@@ -15,6 +15,7 @@ import {
   cancelConfirmedUsage,
   confirmAllMedUsage,
   confirmMedUsage,
+  type ConfirmAllMedUsagePayload,
   getMedSplitsByEncounter,
   returnMedication,
   saveMedSplitOne,
@@ -120,6 +121,7 @@ export const MedicationDetail: React.FC = () => {
   const qs = new URLSearchParams(search);
   const maBenhNhan = qs.get("maBenhNhan") ?? "";
   const tenBenhNhan = qs.get("tenBenhNhan") ?? "";
+  const tuoi = qs.get("tuoi") ?? "";
 
   const initialEncounterId = searchParams.get("idPhieuKham");
   const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(initialEncounterId);
@@ -146,6 +148,9 @@ export const MedicationDetail: React.FC = () => {
     ten: string;
     qty: number;
     type: "CONFIRM" | "RETURN" | "UNCONFIRM";
+    donVi?: string | null;
+    hamLuong?: string | null;
+    loaiThuoc?: string | null;
   } | null>(null);
   const [returnReason, setReturnReason] = useState("");
   const [returnQuantity, setReturnQuantity] = useState(1);
@@ -197,8 +202,34 @@ export const MedicationDetail: React.FC = () => {
   });
 
   const confirmMutation = useMutation({
-    mutationFn: ({ idPhieuThuoc, shift }: { idPhieuThuoc: string; shift: ShiftType }) =>
-      confirmMedUsage(selectedEncounterId!, idPhieuThuoc, shift),
+    mutationFn: ({
+      idPhieuThuoc,
+      shift,
+      soLuongDung,
+      tenThuoc,
+      hamLuong,
+      loaiThuoc,
+      donVi,
+    }: {
+      idPhieuThuoc: string;
+      shift: ShiftType;
+      soLuongDung: number;
+      tenThuoc: string;
+      hamLuong?: string | null;
+      loaiThuoc?: string | null;
+      donVi?: string | null;
+    }) =>
+      confirmMedUsage(selectedEncounterId!, idPhieuThuoc, {
+        shift,
+        soLuongDung,
+        tenBenhNhan: tenBenhNhan || "N/A",
+        maBenhNhan: maBenhNhan || "N/A",
+        tuoi: tuoi || null,
+        tenThuoc,
+        hamLuong: hamLuong ?? null,
+        loaiThuoc: loaiThuoc ?? null,
+        donVi: donVi ?? null,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
       setActionDrug(null);
@@ -297,7 +328,7 @@ export const MedicationDetail: React.FC = () => {
   });
 
   const confirmAllMutation = useMutation({
-    mutationFn: (shift: ShiftType) => confirmAllMedUsage(selectedEncounterId!, shift),
+    mutationFn: (payload: ConfirmAllMedUsagePayload) => confirmAllMedUsage(selectedEncounterId!, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["med-splits", selectedEncounterId] });
       toast.success("Đã xác nhận dùng toàn bộ thuốc trong ca");
@@ -308,6 +339,35 @@ export const MedicationDetail: React.FC = () => {
   });
 
   const activeShiftOption = SHIFT_OPTIONS.find((option) => option.id === activeShift);
+  const confirmAllItems = useMemo(() => {
+    const key = activeShift as keyof SplitQty;
+
+    return (donThuocData ?? [])
+      .map((item) => {
+        const idPhieuThuoc = String(item.IdPhieuThuoc);
+        const splitInfo = splitData?.splits?.[idPhieuThuoc];
+        const qtyInShift = Number(splitInfo?.splits?.[key] ?? 0);
+        const returnedQty =
+          splitInfo?.returnHistory?.reduce((sum, historyItem: any) => {
+            return historyItem.shift === activeShift ? sum + Number(historyItem.quantity ?? 0) : sum;
+          }, 0) ?? 0;
+        const soLuongDung = Math.max(0, qtyInShift - returnedQty);
+        const isConfirmed = splitInfo?.confirmedShifts?.includes(activeShift) ?? false;
+
+        if (soLuongDung <= 0 || isConfirmed) return null;
+
+        return {
+          idPhieuThuoc,
+          soLuongDung,
+          tenThuoc: item.Ten || "",
+          hamLuong: item.HamLuong ?? null,
+          loaiThuoc: item.LoaiThuoc ?? null,
+          donVi: item.DonVi ?? null,
+        };
+      })
+      .filter(Boolean) as ConfirmAllMedUsagePayload["items"];
+  }, [activeShift, donThuocData, splitData?.splits]);
+
   const hasConfirmableMedsInActiveShift = useMemo(() => {
     const splitMap = splitData?.splits ?? {};
     const key = activeShift as keyof SplitQty;
@@ -445,8 +505,16 @@ export const MedicationDetail: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => confirmAllMutation.mutate(activeShift)}
-              disabled={!selectedEncounterId || !hasConfirmableMedsInActiveShift || confirmAllMutation.isPending}
+              onClick={() =>
+                confirmAllMutation.mutate({
+                  shift: activeShift,
+                  tenBenhNhan: tenBenhNhan || "N/A",
+                  maBenhNhan: maBenhNhan || "N/A",
+                  tuoi: tuoi || null,
+                  items: confirmAllItems,
+                })
+              }
+              disabled={!selectedEncounterId || !hasConfirmableMedsInActiveShift || confirmAllMutation.isPending || confirmAllItems.length === 0}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-md shadow-emerald-100 transition disabled:opacity-50 disabled:shadow-none"
             >
               <i className="fa-solid fa-check-double"></i>

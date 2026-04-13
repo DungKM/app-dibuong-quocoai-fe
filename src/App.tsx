@@ -9,6 +9,7 @@ const PatientList = lazyNamed(() => import('@/pages/PatientList'), 'PatientList'
 const PatientDetail = lazyNamed(() => import('@/pages/PatientDetail'), 'PatientDetail');
 const MedicationList = lazyNamed(() => import('@/pages/MedicationList'), 'MedicationList');
 const MedicationDetail = lazyNamed(() => import('@/pages/MedicationDetail'), 'MedicationDetail');
+const MedicationConfirmationHistoryPage = lazyNamed(() => import('@/pages/MedicationConfirmationHistoryPage'), 'MedicationConfirmationHistoryPage');
 const RxInbox = lazyNamed(() => import('@/pages/RxInbox'), 'RxInbox');
 const TreatmentList = lazyNamed(() => import('@/pages/TreatmentList'), 'TreatmentList');
 const UserProfile = lazyNamed(() => import('@/pages/UserProfile'), 'UserProfile');
@@ -96,6 +97,7 @@ const App: React.FC = () => {
                     <Route path="/treatment" element={<TreatmentList />} />
                     <Route path="/rx/inbox" element={<RxInbox />} />
                     <Route path="/medication" element={<MedicationList />} />
+                    <Route path="/medication/history" element={<MedicationConfirmationHistoryPage />} />
                     <Route path="/medication/:id" element={<MedicationDetail />} />
                     <Route path="/profile" element={<UserProfile />} />
                     <Route path="/admin/users" element={<UserAdminPage />} />

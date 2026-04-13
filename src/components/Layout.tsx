@@ -102,7 +102,12 @@ export const Layout: React.FC = () => {
                     <Link to="/rx/inbox" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-50">
                       <i className="fa-solid fa-inbox mr-2"></i>Tiếp nhận Y lệnh
                     </Link>
-                    <Link to="/medication" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cấp phát tại khoa</Link>
+                    <Link to="/medication" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-50">
+                      <i className="fa-solid fa-pills mr-2"></i>Cấp phát tại khoa
+                    </Link>
+                    <Link to="/medication/history" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <i className="fa-solid fa-table-list mr-2"></i>Lịch sử xác nhận
+                    </Link>
                   </div>
                 </div>
               )}

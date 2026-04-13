@@ -27,6 +27,46 @@ export interface MedSplitsResponse {
   splits: Record<string, MedSplitItem>;
 }
 
+export interface ConfirmedMedicationSheetRow {
+  idPhieuThuoc: string;
+  tenThuoc: string;
+  hamLuong?: string | null;
+  loaiThuoc?: string | null;
+  donVi?: string | null;
+  soLuongDung: number;
+  confirmedAt?: string | null;
+  ghiChu?: string | null;
+}
+
+export interface ConfirmedMedicationSheetResponse {
+  ngay?: string | null;
+  shift?: string | null;
+  benhNhan?: {
+    tenBenhNhan?: string | null;
+    maBenhNhan?: string | null;
+    tuoi?: string | null;
+  } | null;
+  items: ConfirmedMedicationSheetRow[];
+}
+
+export interface MedicationConfirmationHistoryItem {
+  idBenhNhan?: string | null;
+  tenBenhNhan: string;
+  maBenhNhan?: string | null;
+  tuoi?: string | null;
+  tenThuoc: string;
+  hamLuong?: string | null;
+  loaiThuoc?: string | null;
+  donVi?: string | null;
+  soLuongDung?: number | null;
+  confirmedAt?: string | null;
+}
+
+export interface MedicationConfirmationHistoryResponse {
+  date?: string | null;
+  items: MedicationConfirmationHistoryItem[];
+}
+
 export interface AutoSplitInputItem {
   idPhieuThuoc: string;
   tenThuoc: string;
@@ -43,6 +83,33 @@ export interface AutoSplitResponse {
     failed: number;
     skippedManual: number;
   };
+}
+
+export interface ConfirmMedUsagePayload {
+  shift: string;
+  soLuongDung: number;
+  tenBenhNhan: string;
+  maBenhNhan: string;
+  tuoi?: string | null;
+  tenThuoc: string;
+  hamLuong?: string | null;
+  loaiThuoc?: string | null;
+  donVi?: string | null;
+}
+
+export interface ConfirmAllMedUsagePayload {
+  shift: string;
+  tenBenhNhan: string;
+  maBenhNhan: string;
+  tuoi?: string | null;
+  items: Array<{
+    idPhieuThuoc: string;
+    soLuongDung: number;
+    tenThuoc: string;
+    hamLuong?: string | null;
+    loaiThuoc?: string | null;
+    donVi?: string | null;
+  }>;
 }
 
 export function getMedSplitsByEncounter(idPhieuKham: string) {
@@ -73,18 +140,43 @@ export function autoSplitAllMeds(
   );
 }
 
-export function confirmMedUsage(idPhieuKham: string, idPhieuThuoc: string, shift: string) {
+export function confirmMedUsage(
+  idPhieuKham: string,
+  idPhieuThuoc: string,
+  payload: ConfirmMedUsagePayload
+) {
   return requestNode(`/api/encounters/${idPhieuKham}/med-splits/${idPhieuThuoc}/confirm`, {
     method: "PATCH",
-    body: { shift },
+    body: payload,
   });
 }
 
-export function confirmAllMedUsage(idPhieuKham: string, shift: string) {
+export function confirmAllMedUsage(idPhieuKham: string, payload: ConfirmAllMedUsagePayload) {
   return requestNode(`/api/encounters/${idPhieuKham}/med-splits/confirm-all`, {
     method: "PATCH",
-    body: { shift },
+    body: payload,
   });
+}
+
+export function getConfirmedMedicationSheet(idPhieuKham: string, shift: string) {
+  return requestNode<ConfirmedMedicationSheetResponse>(
+    `/api/encounters/${idPhieuKham}/med-splits/confirmed-sheet`,
+    {
+      query: { shift },
+    }
+  );
+}
+
+export function getMedicationConfirmationHistory(date: string, idKhoa?: string | null) {
+  return requestNode<MedicationConfirmationHistoryResponse>(
+    `/api/medication-confirmations/history`,
+    {
+      query: {
+        date,
+        idKhoa: idKhoa || undefined,
+      },
+    }
+  );
 }
 
 export function cancelConfirmedUsage(idPhieuKham: string, idPhieuThuoc: string, shift: string) {

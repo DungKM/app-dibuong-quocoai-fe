@@ -110,7 +110,15 @@ export const DrugActionModal = ({
           <button
             onClick={() => {
               if (isConfirm) {
-                confirmMutation.mutate({ idPhieuThuoc: actionDrug.idPhieuThuoc, shift: activeShift });
+                confirmMutation.mutate({
+                  idPhieuThuoc: actionDrug.idPhieuThuoc,
+                  shift: activeShift,
+                  soLuongDung: actionDrug.qty,
+                  tenThuoc: actionDrug.ten,
+                  hamLuong: actionDrug.hamLuong,
+                  loaiThuoc: actionDrug.loaiThuoc,
+                  donVi: actionDrug.donVi,
+                });
                 setActionDrug(null);
                 return;
               }

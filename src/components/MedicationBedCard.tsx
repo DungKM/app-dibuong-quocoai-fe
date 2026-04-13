@@ -52,6 +52,7 @@ export const MedicationBedCard: React.FC<{
                                     const qs = new URLSearchParams({
                                         maBenhNhan: visit.patientCode,
                                         tenBenhNhan: visit.patientName,
+                                        tuoi: visit.patientAge ?? "",
                                     }).toString();
                                     navigate(`/medication/${visit.id}?${qs}`);
                                 }}
