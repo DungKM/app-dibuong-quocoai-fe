@@ -114,6 +114,8 @@ export interface DonThuocItem {
   IdPhieuKham: string;
   IdBenhAn: string;
   Ten: string;
+  HamLuong?: string | null;
+  LoaiThuoc?: string | null;
   SoLuong: number | null;
   SoLuongHuy: number | null;
   DonVi: string | null;

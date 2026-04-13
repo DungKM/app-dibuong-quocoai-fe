@@ -34,6 +34,10 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
   const safeDrug = selectedDrug ?? {
     idPhieuThuoc: "",
     ten: "",
+    donVi: "",
+    hamLuong: "",
+    loaiThuoc: "",
+    lieuDung: "",
     maxQty: 0,
     splits: {
       MORNING: 0,
@@ -112,6 +116,32 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
   );
   const completionRatio =
     safeDrug.maxQty > 0 ? Math.min(100, Math.max(0, (totalSplits / safeDrug.maxQty) * 100)) : 0;
+  const drugMeta = [
+    safeDrug.hamLuong
+      ? {
+          key: "ham-luong",
+          label: "Ham luong",
+          value: safeDrug.hamLuong,
+          tone: "border-emerald-100 bg-emerald-50 text-emerald-700",
+          icon: "fa-flask",
+        }
+      : null,
+    safeDrug.loaiThuoc
+      ? {
+          key: "loai-thuoc",
+          label: "Loai thuoc",
+          value: safeDrug.loaiThuoc,
+          tone: "border-violet-100 bg-violet-50 text-violet-700",
+          icon: "fa-tag",
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    value: string;
+    tone: string;
+    icon: string;
+  }>;
 
   if (!selectedDrug) return null;
 
@@ -131,6 +161,32 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
           <div className="relative flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg font-black tracking-tight text-slate-900 md:text-3xl">{safeDrug.ten}</h2>
+
+              {drugMeta.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {drugMeta.map((meta) => (
+                    <div
+                      key={meta.key}
+                      className={`inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold shadow-sm ${meta.tone}`}
+                    >
+                      <i className={`fa-solid ${meta.icon} text-[11px]`}></i>
+                      <span className="text-[9px] font-black uppercase tracking-[0.16em] opacity-70">{meta.label}</span>
+                      <span className="break-words leading-snug text-[13px] text-current">{meta.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 ring-1 ring-slate-200">
+                  <i className="fa-solid fa-layer-group text-[10px] text-slate-400"></i>
+                  Tổng đơn: {safeDrug.maxQty} {safeDrug.donVi || ""}
+                </span>
+                <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 ring-1 ring-slate-200">
+                  <i className="fa-solid fa-notes-medical text-[10px] text-slate-400"></i>
+                  <span className="break-words">{safeDrug.lieuDung || "Theo chỉ dẫn của bác sĩ"}</span>
+                </span>
+              </div>
             </div>
 
             <button

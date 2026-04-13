@@ -25,7 +25,15 @@ type Props = {
   splitMap: Record<string, MedSplitInfo>;
   filterTab: "PENDING" | "COMPLETED";
   splitLoading?: boolean;
-  onPickDrug: (x: { idPhieuThuoc: string; ten: string; maxQty: number; lieuDung: string }) => void;
+  onPickDrug: (x: {
+    idPhieuThuoc: string;
+    ten: string;
+    maxQty: number;
+    lieuDung: string;
+    donVi?: string | null;
+    hamLuong?: string | null;
+    loaiThuoc?: string | null;
+  }) => void;
   onAction: (data: { idPhieuThuoc: string; ten: string; qty: number; type: "CONFIRM" | "RETURN" | "UNCONFIRM" }) => void;
 };
 
@@ -105,6 +113,32 @@ export const MedicationOrders: React.FC<Props> = ({
 
       {list.map(({ raw: it, idPhieuThuoc, qtyInShift, totalAssigned, needsReview, reviewReason, splitSource, availableQty, totalReturned, hasBeenSplit, currentStatus, isShiftConfirmed }) => {
         const canAction = availableQty > 0 && !isShiftConfirmed;
+        const metaChips = [
+          it.HamLuong
+            ? {
+                key: "ham-luong",
+                label: "Hàm lượng",
+                value: it.HamLuong,
+                tone: "border-emerald-100 bg-emerald-50 text-emerald-700",
+                icon: "fa-flask",
+              }
+            : null,
+          it.LoaiThuoc
+            ? {
+                key: "loai-thuoc",
+                label: "Loại thuốc",
+                value: it.LoaiThuoc,
+                tone: "border-violet-100 bg-violet-50 text-violet-700",
+                icon: "fa-tag",
+              }
+            : null,
+        ].filter(Boolean) as Array<{
+          key: string;
+          label: string;
+          value: string;
+          tone: string;
+          icon: string;
+        }>;
 
         return (
           <div
@@ -137,6 +171,25 @@ export const MedicationOrders: React.FC<Props> = ({
                     <i className="fa-solid fa-layer-group opacity-40"></i>
                     <span>Tổng đơn: {it.SoLuong} {it.DonVi}</span>
                   </div>
+
+                  {metaChips.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {metaChips.map((chip) => (
+                        <div
+                          key={chip.key}
+                          className={`inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold shadow-sm ${chip.tone}`}
+                        >
+                          <i className={`fa-solid ${chip.icon} text-[11px]`}></i>
+                          <span className="text-[9px] font-black uppercase tracking-[0.16em] opacity-70">
+                            {chip.label}
+                          </span>
+                          <span className="break-words leading-snug text-[13px] text-current">
+                            {chip.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {filterTab === "PENDING" && (
@@ -146,7 +199,10 @@ export const MedicationOrders: React.FC<Props> = ({
                         idPhieuThuoc: String(it.IdPhieuThuoc),
                         ten: it.Ten,
                         maxQty: it.SoLuong ?? 0,
-                        lieuDung: it.LieuDung ?? "",
+                        lieuDung: it.LieuDung?.trim() || it.GhiChuLieuDung?.trim() || "",
+                        donVi: it.DonVi,
+                        hamLuong: it.HamLuong,
+                        loaiThuoc: it.LoaiThuoc,
                       })
                     }
                     className={`h-16 w-24 shrink-0 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 flex flex-col items-center justify-center gap-1 ${

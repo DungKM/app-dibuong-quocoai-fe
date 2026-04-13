@@ -133,6 +133,9 @@ export const MedicationDetail: React.FC = () => {
     splits: SplitQty;
     maxQty: number;
     lieuDung: string;
+    donVi?: string | null;
+    hamLuong?: string | null;
+    loaiThuoc?: string | null;
   } | null>(null);
 
   const [isVerified, setIsVerified] = useState(false);
@@ -466,6 +469,9 @@ export const MedicationDetail: React.FC = () => {
             ten: drug.ten,
             maxQty: drug.maxQty,
             lieuDung: drug.lieuDung,
+            donVi: drug.donVi,
+            hamLuong: drug.hamLuong,
+            loaiThuoc: drug.loaiThuoc,
             splits: {
               MORNING: Number(currentInfo?.MORNING ?? 0),
               NOON: Number(currentInfo?.NOON ?? 0),

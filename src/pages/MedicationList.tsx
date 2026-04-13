@@ -283,7 +283,7 @@ export const MedicationList: React.FC = () => {
 
           <div>
             <h1 className="text-xl md:text-3xl font-black text-slate-900 uppercase leading-none mb-1 tracking-tighter">
-              Thuc hien thuoc
+              Thực hiện thuốc
             </h1>
 
             <div className="flex flex-wrap items-center gap-2 text-slate-400 text-[9px] md:text-[10px] font-black uppercase tracking-widest">
@@ -302,7 +302,7 @@ export const MedicationList: React.FC = () => {
                 </select>
               </span>
               <span className="flex items-center gap-1.5">
-                <i className="fa-solid fa-shield-halved"></i> 5 dung
+                <i className="fa-solid fa-shield-halved"></i> 5 đúng
               </span>
             </div>
           </div>
@@ -365,7 +365,7 @@ export const MedicationList: React.FC = () => {
           <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors"></i>
           <input
             type="text"
-            placeholder="Tim ten benh nhan, ma so..."
+            placeholder="Tìm tên bệnh nhân hoặc mã bệnh nhân..."
             className="w-full pl-12 pr-6 py-4 rounded-3xl border-2 border-slate-200 bg-white text-slate-900 font-black text-sm placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

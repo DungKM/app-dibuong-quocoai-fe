@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTongHopLinh } from "@/services/dibuong.api";
+import { useAuth } from "@/context/AuthContext";
+import { authApi } from "@/services/auth.api";
 import type { TongHopLinhItem, TongHopLinhThuocItem } from "@/types/dibuong";
 
 type Row = {
@@ -37,15 +39,24 @@ function sumByKey(items: TongHopLinhThuocItem[]) {
 }
 
 export const RxInbox: React.FC = () => {
-  const ID_KHOA = "41CA5C91-F449-404F-B37B-00EFE98B8375";
+  const { user } = useAuth();
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [qPatient, setQPatient] = useState("");
   const [qDrug, setQDrug] = useState("");
 
+  const { data: departmentHisId } = useQuery<string | null>({
+    queryKey: ["department-id-his", user?.idKhoa],
+    queryFn: () => authApi.getDepartmentHisById(user!.idKhoa!),
+    enabled: !!user?.idKhoa,
+  });
+
+  const ID_KHOA = departmentHisId || user?.idHis || "";
+
   const { data, isLoading, error } = useQuery<TongHopLinhItem[]>({
     queryKey: ["tonghoplinh", ID_KHOA],
     queryFn: () => getTongHopLinh(ID_KHOA),
+    enabled: !!ID_KHOA,
   });
 
   const patients = useMemo(() => {
