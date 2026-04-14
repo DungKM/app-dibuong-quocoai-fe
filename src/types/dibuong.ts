@@ -114,6 +114,8 @@ export interface DonThuocItem {
   IdPhieuKham: string;
   IdBenhAn: string;
   Ten: string;
+  HamLuong?: string | null;
+  LoaiThuoc?: string | null;
   SoLuong: number | null;
   SoLuongHuy: number | null;
   DonVi: string | null;
@@ -184,6 +186,7 @@ export type MedVisitLite = {
   patientName: string;
   patientCode: string;
   patientGender?: string;
+  patientAge?: string;
   room: string; 
   bed: string; 
   idPhieuKham?: string; 

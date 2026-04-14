@@ -1,5 +1,5 @@
 // src/pages/DepartmentAdminPage.tsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/services/auth.api";
 import { DepartmentModal } from "@/components/DepartmentModal";
@@ -9,6 +9,7 @@ export const DepartmentAdminPage = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editData, setEditData] = useState<any>(null);
+    const [search, setSearch] = useState("");
 
     const { data: departments, isLoading } = useQuery({
         queryKey: ["departments"],
@@ -29,9 +30,29 @@ export const DepartmentAdminPage = () => {
             deleteMutation.mutate(id);
         }
     };
+
+    const normalized = (value: unknown) => String(value ?? "").toLowerCase().trim();
+
+    const filteredDepartments = useMemo(() => {
+        const q = normalized(search);
+        if (!q) return departments || [];
+
+        return (departments || []).filter((dept: any) => {
+            const typeLabel = dept.type === "KHOA" ? "khoa chủ quản" : "phòng trực thuộc";
+
+            return (
+                normalized(dept.name).includes(q) ||
+                normalized(dept.type).includes(q) ||
+                normalized(typeLabel).includes(q) ||
+                normalized(dept.parentName).includes(q) ||
+                normalized(dept.idHis).includes(q)
+            );
+        });
+    }, [departments, search]);
+
     return (
         <div className="max-w-[1400px] mx-auto p-4 md:p-10 space-y-8">
-            <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex justify-between items-center">
+            <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col gap-5 md:flex-row md:justify-between md:items-center">
                 <div className="flex items-center gap-6">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-[24px] flex items-center justify-center text-3xl shadow-xl shadow-purple-100">
                         <i className="fa-solid fa-sitemap"></i>
@@ -43,28 +64,55 @@ export const DepartmentAdminPage = () => {
                 </div>
                 <button
                     onClick={() => { setEditData(null); setIsModalOpen(true); }}
-                    className="bg-purple-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg hover:scale-105 transition-all"
+                    className="w-full md:w-auto bg-purple-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg hover:scale-105 transition-all"
                 >
                     <i className="fa-solid fa-plus mr-2"></i> THÊM MỚI
                 </button>
             </div>
 
             <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="border-b border-slate-100 px-4 py-4 md:px-6">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:max-w-[420px] md:flex-1">
+                            <i className="fa-solid fa-magnifying-glass text-slate-400"></i>
+                            <input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Tìm theo tên đơn vị, loại, khoa cha..."
+                                className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearch("")}
+                                    className="text-slate-400 transition-colors hover:text-slate-700"
+                                    title="Xóa tìm kiếm"
+                                >
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                            )}
+                        </div>
+                        <div className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+                            {filteredDepartments.length} đơn vị
+                        </div>
+                    </div>
+                </div>
+
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-slate-50/50 border-b border-slate-100">
-                            <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-widest">ID Phần mềm</th>
+                            {/* <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-widest">ID Phần mềm</th> */}
                             <th className="px-6 py-5 text-[11px] font-black text-slate-400 uppercase tracking-widest">Tên đơn vị</th>
                             <th className="px-6 py-5 text-[11px] font-black text-slate-400 uppercase tracking-widest">Phân cấp</th>
                             <th className="px-6 py-5 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                        {departments?.map((dept: any) => (
+                        {filteredDepartments.map((dept: any) => (
                             <tr key={dept._id} className="hover:bg-purple-50/30 transition-colors group">
-                                <td className="px-8 py-4 font-mono text-xs font-bold text-slate-400">
+                                {/* <td className="px-8 py-4 font-mono text-xs font-bold text-slate-400">
                                     {dept.idHis || "N/A"}
-                                </td>
+                                </td> */}
                                 <td className="px-6 py-4">
                                     <span className="font-black text-slate-700 uppercase text-sm tracking-tight">{dept.name}</span>
                                 </td>
@@ -79,23 +127,28 @@ export const DepartmentAdminPage = () => {
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => { setEditData(dept); setIsModalOpen(true); }}
-                                            className="w-9 h-9 text-slate-300 hover:text-[#1EADED] transition-all"
-                                        >
-                                            <i className="fa-solid fa-pen-to-square"></i>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(dept._id, dept.name)}
-                                            className="w-9 h-9 text-slate-300 hover:text-red-500 transition-all"
-                                        >
-                                            <i className="fa-solid fa-trash-can"></i>
-                                        </button>
-                                    </td>
+                                    <button
+                                        onClick={() => { setEditData(dept); setIsModalOpen(true); }}
+                                        className="w-9 h-9 text-slate-300 hover:text-[#1EADED] transition-all"
+                                    >
+                                        <i className="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(dept._id, dept.name)}
+                                        className="w-9 h-9 text-slate-300 hover:text-red-500 transition-all"
+                                    >
+                                        <i className="fa-solid fa-trash-can"></i>
+                                    </button>
                                 </td>
                             </tr>
                         ))}
+                        {filteredDepartments.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="px-6 py-10 text-center text-sm font-bold text-slate-400">
+                                    Không tìm thấy khoa/phòng phù hợp.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

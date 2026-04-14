@@ -218,6 +218,22 @@ export const authApi = {
     return result.data;
   },
 
+  getDepartmentHisById: async (id: string) => {
+    const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments/${id}/id-his`, {
+      method: "GET"
+    });
+    if (!res.ok) throw new Error("Không thể lấy idHis của khoa phòng");
+
+    const result = await res.json().catch(() => null);
+
+    if (typeof result === "string") return result;
+    if (typeof result?.idHis === "string") return result.idHis;
+    if (typeof result?.data === "string") return result.data;
+    if (typeof result?.data?.idHis === "string") return result.data.idHis;
+
+    return null;
+  },
+
   createDepartment: async (payload: { name: string; type: 'KHOA' | 'PHONG'; parentId?: string; idHis?: string }) => {
     const res = await authenticatedRequest(`${env.API_BACKEND_AUTH_NODE_URL}/auth/departments`, {
       method: "POST",
