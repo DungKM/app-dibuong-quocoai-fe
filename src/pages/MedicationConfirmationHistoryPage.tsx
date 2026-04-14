@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
@@ -50,6 +50,7 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
   const { user } = useAuth();
   const [date, setDate] = useState(formatDateInput());
   const [draftDate, setDraftDate] = useState(formatDateInput());
+  const [activeColumnKey, setActiveColumnKey] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery<MedicationConfirmationHistoryResponse>({
     queryKey: ["medication-confirmation-history", date, user?.idKhoa],
@@ -149,6 +150,15 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
     [rows]
   );
 
+  useEffect(() => {
+    if (!activeColumnKey) return;
+
+    const handleDocumentClick = () => setActiveColumnKey(null);
+
+    document.addEventListener("click", handleDocumentClick);
+    return () => document.removeEventListener("click", handleDocumentClick);
+  }, [activeColumnKey]);
+
   return (
     <div className="space-y-5 px-3 md:px-6 max-w-[1600px] mx-auto">
       <div className="rounded-[32px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
@@ -227,81 +237,220 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
             Chưa có dữ liệu xác nhận dùng thuốc cho ngày này.
           </div>
         ) : (
-          <div className="overflow-auto">
-            <table className="min-w-[980px] w-full border-collapse text-left">
-              <thead className="bg-slate-100/90">
-                <tr>
-                  <th className="sticky left-0 z-20 min-w-[220px] border-b border-r border-slate-200 bg-slate-100 px-4 py-4 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                    Họ Tên Bệnh Nhân
-                  </th>
-                  <th className="sticky left-[220px] z-20 min-w-[72px] border-b border-r border-slate-200 bg-slate-100 px-4 py-4 text-center text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                    Tuổi
-                  </th>
-                  {columns.map((column) => (
-                    <th
-                      key={column.key}
-                      className="min-w-[180px] border-b border-r border-slate-200 px-4 py-4 text-center"
-                    >
-                      <div className="text-sm font-black text-slate-800">{column.tenThuoc}</div>
-                      {column.hamLuong && (
-                        <div className="mt-1 text-[11px] font-bold text-primary">{column.hamLuong}</div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.key} className="odd:bg-white even:bg-slate-50/50">
-                    <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-4 py-5">
-                      <div className="text-base font-black text-slate-900">{row.tenBenhNhan}</div>
-                      <div className="mt-1 text-[11px] font-bold text-slate-400">
-                        {row.maBenhNhan ? `#${row.maBenhNhan}` : "--"}
-                      </div>
-                    </td>
-                    <td className="sticky left-[220px] z-10 border-b border-r border-slate-200 bg-inherit px-4 py-5 text-center text-base font-black text-slate-700">
-                      {row.tuoi || "--"}
-                    </td>
-
-                    {columns.map((column) => {
-                      const cell = row.cells[column.key];
-
-                      return (
-                        <td
-                          key={`${row.key}-${column.key}`}
-                          className="border-b border-r border-slate-200 px-3 py-4 align-top"
+          <>
+            <div className="md:hidden">
+              <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-400">
+                Vuốt ngang để xem đầy đủ danh sách thuốc
+              </div>
+              <div className="overflow-auto">
+                <table className="min-w-[760px] w-full border-collapse text-left">
+                  <thead className="bg-slate-100/90">
+                    <tr>
+                      <th className="sticky left-0 z-20 min-w-[160px] border-b border-r border-slate-200 bg-slate-100 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                        Bệnh nhân
+                      </th>
+                      <th className="sticky left-[160px] z-20 min-w-[56px] border-b border-r border-slate-200 bg-slate-100 px-2 py-3 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                        Tuổi
+                      </th>
+                      {columns.map((column) => (
+                        <th
+                          key={`mobile-${column.key}`}
+                          className="relative h-[170px] min-w-[72px] max-w-[72px] border-b border-r border-slate-200 p-0 text-center align-bottom"
                         >
-                          {!cell ? (
-                            <div className="text-center text-xl font-black text-slate-300">+</div>
-                          ) : (
-                            <div className="flex min-h-[70px] flex-col items-center justify-center gap-2 text-center">
-                              {cell.quantities.length > 0 && (
-                                <div className="text-lg font-black text-primary">
-                                  {cell.quantities.join(", ")}
+                          <div className="relative h-full w-full overflow-hidden">
+                            <button
+                              type="button"
+                              title={column.hamLuong ? `${column.tenThuoc} - ${column.hamLuong}` : column.tenThuoc}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveColumnKey((current) =>
+                                  current === `mobile-${column.key}` ? null : `mobile-${column.key}`
+                                );
+                              }}
+                              className="absolute left-1/2 top-1/2 flex w-[170px] -translate-x-1/2 -translate-y-1/2 -rotate-90 flex-col items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-center transition-colors hover:bg-slate-100/80"
+                            >
+                              <div className="w-full truncate text-xs font-black text-slate-800">
+                                {column.tenThuoc}
+                              </div>
+                              {column.hamLuong && (
+                                <div className="w-full truncate text-[10px] font-bold text-primary">
+                                  {column.hamLuong}
                                 </div>
                               )}
-
-                              <div className="flex flex-wrap justify-center gap-1.5">
-                                {cell.times.map((time) => (
-                                  <span
-                                    key={time}
-                                    className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-black text-sky-700"
-                                  >
-                                    {time}
-                                  </span>
-                                ))}
-                              </div>
+                            </button>
+                          </div>
+                          {activeColumnKey === `mobile-${column.key}` && (
+                            <div
+                              className="absolute left-1/2 top-2 z-30 w-[180px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-xl"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="text-xs font-black text-slate-800">{column.tenThuoc}</div>
+                              {column.hamLuong && (
+                                <div className="mt-1 text-[11px] font-bold text-primary">{column.hamLuong}</div>
+                              )}
                             </div>
                           )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={`mobile-row-${row.key}`} className="odd:bg-white even:bg-slate-50/50">
+                        <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-3 py-4">
+                          <div className="text-sm font-black leading-tight text-slate-900">{row.tenBenhNhan}</div>
+                          <div className="mt-1 text-[10px] font-bold text-slate-400">
+                            {row.maBenhNhan ? `#${row.maBenhNhan}` : "--"}
+                          </div>
                         </td>
-                      );
-                    })}
+                        <td className="sticky left-[160px] z-10 border-b border-r border-slate-200 bg-inherit px-2 py-4 text-center text-sm font-black text-slate-700">
+                          {row.tuoi || "--"}
+                        </td>
+
+                        {columns.map((column) => {
+                          const cell = row.cells[column.key];
+
+                          return (
+                            <td
+                              key={`mobile-${row.key}-${column.key}`}
+                              className="border-b border-r border-slate-200 px-2 py-3 align-top"
+                            >
+                              {!cell ? (
+                                <div className="min-h-[56px]"></div>
+                              ) : (
+                                <div className="flex min-h-[56px] flex-col items-center justify-center gap-1.5 text-center">
+                                  {cell.quantities.length > 0 && (
+                                    <div className="text-sm font-black text-primary">
+                                      {cell.quantities.join(", ")}
+                                    </div>
+                                  )}
+
+                                  <div className="flex flex-wrap justify-center gap-1">
+                                    {cell.times.map((time) => (
+                                      <span
+                                        key={time}
+                                        className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-black text-sky-700"
+                                      >
+                                        {time}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="hidden overflow-auto md:block">
+              <table className="min-w-[980px] w-full border-collapse text-left">
+                <thead className="bg-slate-100/90">
+                  <tr>
+                    <th className="sticky left-0 z-20 min-w-[220px] border-b border-r border-slate-200 bg-slate-100 px-4 py-4 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                      Họ Tên Bệnh Nhân
+                    </th>
+                    <th className="sticky left-[220px] z-20 min-w-[72px] border-b border-r border-slate-200 bg-slate-100 px-4 py-4 text-center text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                      Tuổi
+                    </th>
+                    {columns.map((column) => (
+                      <th
+                        key={column.key}
+                        className="relative h-[240px] min-w-[88px] max-w-[88px] border-b border-r border-slate-200 p-0 text-center align-bottom"
+                      >
+                        <div className="relative h-full w-full overflow-hidden">
+                          <button
+                            type="button"
+                            title={column.hamLuong ? `${column.tenThuoc} - ${column.hamLuong}` : column.tenThuoc}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveColumnKey((current) => (current === column.key ? null : column.key));
+                            }}
+                            className="absolute left-1/2 top-1/2 flex w-[220px] -translate-x-1/2 -translate-y-1/2 -rotate-90 flex-col items-center gap-1 whitespace-nowrap rounded-xl px-2 py-1 text-center transition-colors hover:bg-slate-100/80"
+                          >
+                            <div className="w-full truncate text-sm font-black text-slate-800">
+                              {column.tenThuoc}
+                            </div>
+                            {column.hamLuong && (
+                              <div className="w-full truncate text-[11px] font-bold text-primary">
+                                {column.hamLuong}
+                              </div>
+                            )}
+                          </button>
+                        </div>
+                        {activeColumnKey === column.key && (
+                          <div
+                            className="absolute left-1/2 top-3 z-30 w-[220px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-xl"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="text-xs font-black text-slate-800">{column.tenThuoc}</div>
+                            {column.hamLuong && (
+                              <div className="mt-1 text-[11px] font-bold text-primary">{column.hamLuong}</div>
+                            )}
+                          </div>
+                        )}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.key} className="odd:bg-white even:bg-slate-50/50">
+                      <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-4 py-5">
+                        <div className="text-base font-black text-slate-900">{row.tenBenhNhan}</div>
+                        <div className="mt-1 text-[11px] font-bold text-slate-400">
+                          {row.maBenhNhan ? `#${row.maBenhNhan}` : "--"}
+                        </div>
+                      </td>
+                      <td className="sticky left-[220px] z-10 border-b border-r border-slate-200 bg-inherit px-4 py-5 text-center text-base font-black text-slate-700">
+                        {row.tuoi || "--"}
+                      </td>
+
+                      {columns.map((column) => {
+                        const cell = row.cells[column.key];
+
+                        return (
+                          <td
+                            key={`${row.key}-${column.key}`}
+                            className="border-b border-r border-slate-200 px-3 py-4 align-top"
+                          >
+                            {!cell ? (
+                              <div></div>
+                            ) : (
+                              <div className="flex min-h-[70px] flex-col items-center justify-center gap-2 text-center">
+                                {cell.quantities.length > 0 && (
+                                  <div className="text-lg font-black text-primary">
+                                    {cell.quantities.join(", ")}
+                                  </div>
+                                )}
+
+                                <div className="flex flex-wrap justify-center gap-1.5">
+                                  {cell.times.map((time) => (
+                                    <span
+                                      key={time}
+                                      className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-black text-sky-700"
+                                    >
+                                      {time}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
