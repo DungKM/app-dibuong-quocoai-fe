@@ -1,5 +1,5 @@
 import { requestNode } from "./http.node";
-import type { SplitQty } from "@/types/dibuong";
+import type { BuongPhongResponse, DonThuocItem, MedVisitLite, SplitQty } from "@/types/dibuong";
 
 export interface ReturnHistoryItem {
   quantity: number;
@@ -25,6 +25,42 @@ export interface MedSplitItem {
 export interface MedSplitsResponse {
   idPhieuKham: string;
   splits: Record<string, MedSplitItem>;
+}
+
+export interface MedicationListBed {
+  code: string;
+  visits: MedVisitLite[];
+  isOccupied: boolean;
+}
+
+export interface MedicationListRoom {
+  room: string;
+  beds: MedicationListBed[];
+}
+
+export interface MedicationListResponse {
+  date: string;
+  idKhoa: string;
+  departmentId?: string | null;
+  shouldResolveEncountersByDate: boolean;
+  source?: {
+    upstreamBaseUrl?: string;
+    cacheTtlMs?: number;
+  };
+  wardData?: BuongPhongResponse;
+  wardLayout: MedicationListRoom[];
+  benhAnIds?: string[];
+  latestPhieuKhamIds?: string[];
+  phieuKhamIds?: string[];
+  lanKhamByBenhAn?: Record<string, string | null>;
+  medsByVisit?: Record<string, DonThuocItem[]>;
+  medSplitsByVisit?: Record<string, Record<string, MedSplitItem>>;
+  shiftsByVisit?: Record<string, Record<string, { used: number; pending: number; returned: number; total?: number }>>;
+  totalByShift: Record<string, number>;
+  meta?: {
+    partial?: boolean;
+    upstreamErrors?: Array<{ item?: string; message?: string } | string>;
+  };
 }
 
 export interface ConfirmedMedicationSheetRow {
@@ -114,6 +150,15 @@ export interface ConfirmAllMedUsagePayload {
 
 export function getMedSplitsByEncounter(idPhieuKham: string) {
   return requestNode<MedSplitsResponse>(`/api/encounters/${idPhieuKham}/med-splits`);
+}
+
+export function getMedicationList(idKhoa?: string | null, date?: string | null) {
+  return requestNode<MedicationListResponse>(`/api/medication-list`, {
+    query: {
+      idKhoa: idKhoa || undefined,
+      date: date || undefined,
+    },
+  });
 }
 
 export function saveMedSplitOne(

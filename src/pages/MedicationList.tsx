@@ -5,12 +5,11 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
 
-import { MedicationBedCard } from "@/components/MedicationBedCard";
 import { buildAdvancedShiftStats } from "@/components/buildAdvancedShiftStats";
+import { MedicationBedCard } from "@/components/MedicationBedCard";
 import { useAuth } from "@/context/AuthContext";
-import { getBuongPhong, getDonThuocByPhieuKham, getDsLanKham } from "@/services/dibuong.api";
-import { getMedSplitsByEncounter } from "@/services/medSplit.api";
-import type { BuongPhongResponse, DonThuocItem, MedVisitLite } from "@/types/dibuong";
+import { getMedicationList } from "@/services/medSplit.api";
+import type { MedicationListResponse } from "@/services/medSplit.api";
 import { ShiftType } from "@/types/dibuong";
 import { getCurrentShift, SHIFT_OPTIONS } from "@/utils/shifts";
 
@@ -22,7 +21,7 @@ export const MedicationList: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeShift, setActiveShift] = useState<ShiftType>(() => getCurrentShift());
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [idKhoa, setIdKhoa] = useState<string>(khoaOptions[0].id);
 
   const displayDate = useMemo(() => {
@@ -66,150 +65,44 @@ export const MedicationList: React.FC = () => {
   DateTrigger.displayName = "DateTrigger";
 
   const {
-    data: wardData,
-    isLoading: isLoadingWard,
-    error: wardError,
-  } = useQuery<BuongPhongResponse>({
-    queryKey: ["buongphong", idKhoa],
-    queryFn: () => getBuongPhong(idKhoa),
+    data: medicationListData,
+    isLoading,
+    error,
+  } = useQuery<MedicationListResponse>({
+    queryKey: ["medicationList", idKhoa, selectedDate],
+    queryFn: () => getMedicationList(idKhoa, selectedDate),
     enabled: !!idKhoa,
+    staleTime: 30_000,
   });
-
-  const benhAnIds = useMemo(() => {
-    const list: { idBenhAn: string }[] = [];
-
-    wardData?.DSPhong?.forEach((phong: any) => {
-      phong?.DsGiuong?.forEach((giuong: any) => {
-        giuong?.DsBenhAn?.forEach((benhAn: any) => {
-          if (benhAn?.IdBenhAn) {
-            list.push({ idBenhAn: String(benhAn.IdBenhAn) });
-          }
-        });
-      });
-    });
-
-    return list.sort((a, b) => a.idBenhAn.localeCompare(b.idBenhAn));
-  }, [wardData]);
-
-  const { data: lanKhamByBenhAn } = useQuery({
-    queryKey: ["lanKham", benhAnIds, selectedDate],
-    enabled: benhAnIds.length > 0,
-    queryFn: async () => {
-      const entries = await Promise.all(
-        benhAnIds.map(async ({ idBenhAn }) => {
-          const list = await getDsLanKham(idBenhAn);
-          const matched = list?.find((lk) => lk.NgayThucKham?.startsWith(selectedDate));
-          return [idBenhAn, matched?.Id ?? null] as const;
-        })
-      );
-
-      return Object.fromEntries(entries);
-    },
-  });
-
-  const phieuKhamIds = useMemo(() => {
-    if (!lanKhamByBenhAn) {
-      const ids = new Set<string>();
-
-      wardData?.DSPhong?.forEach((phong: any) => {
-        phong?.DsGiuong?.forEach((giuong: any) => {
-          giuong?.DsBenhAn?.forEach((benhAn: any) => {
-            const id = benhAn?.IdPhieuKhamMoiNhat;
-            if (id) ids.add(String(id));
-          });
-        });
-      });
-
-      return Array.from(ids).sort();
-    }
-
-    return (Object.values(lanKhamByBenhAn).filter(Boolean) as string[]).sort();
-  }, [lanKhamByBenhAn, wardData]);
-
-  const {
-    data: medsByVisit,
-    isLoading: isLoadingMeds,
-    error: medsError,
-  } = useQuery<Record<string, DonThuocItem[]>>({
-    queryKey: ["medsByVisit", phieuKhamIds, selectedDate],
-    enabled: phieuKhamIds.length > 0,
-    queryFn: async () => {
-      const entries = await Promise.all(
-        phieuKhamIds.map(async (id) => {
-          const meds = await getDonThuocByPhieuKham(id);
-          return [id, meds] as const;
-        })
-      );
-
-      return Object.fromEntries(entries);
-    },
-  });
-
-  const { data: allSplitsByVisit } = useQuery({
-    queryKey: ["allMedSplits", phieuKhamIds],
-    enabled: phieuKhamIds.length > 0,
-    staleTime: 0,
-    queryFn: async () => {
-      const entries = await Promise.all(
-        phieuKhamIds.map(async (id) => {
-          const res = await getMedSplitsByEncounter(id);
-          return [id, res.splits] as const;
-        })
-      );
-
-      return Object.fromEntries(entries);
-    },
-  });
-
-  const shiftsByVisit = useMemo(() => {
-    const map: Record<string, ReturnType<typeof buildAdvancedShiftStats>> = {};
-    if (!medsByVisit || !allSplitsByVisit) return map;
-
-    Object.keys(medsByVisit).forEach((id) => {
-      const meds = medsByVisit[id] ?? [];
-      const splits = allSplitsByVisit[id] ?? {};
-      map[id] = buildAdvancedShiftStats(meds, splits);
-    });
-
-    return map;
-  }, [medsByVisit, allSplitsByVisit]);
 
   const wardLayout = useMemo(() => {
-    if (!wardData?.DSPhong) return [];
+    const rawWardLayout = medicationListData?.wardLayout ?? [];
+    const medsByVisit = medicationListData?.medsByVisit ?? {};
+    const medSplitsByVisit = medicationListData?.medSplitsByVisit ?? {};
 
-    return wardData.DSPhong.map((phong: any) => ({
-      room: phong.Ma,
-      beds: (phong.DsGiuong ?? []).map((giuong: any) => {
-        const bedCode = giuong?.MaGiuong ?? "--";
-
-        const visits: MedVisitLite[] = (giuong.DsBenhAn ?? []).map((benhAn: any) => {
-          const idBenhAn = String(benhAn.IdBenhAn);
-          const idPhieuKham = lanKhamByBenhAn?.[idBenhAn] ?? String(benhAn?.IdPhieuKhamMoiNhat);
-          const meds = medsByVisit?.[idPhieuKham] ?? [];
-          const shifts =
-            shiftsByVisit[idPhieuKham] ?? buildAdvancedShiftStats(meds, allSplitsByVisit?.[idPhieuKham] ?? {});
+    return rawWardLayout.map((room) => ({
+      ...room,
+      beds: room.beds.map((bed) => ({
+        ...bed,
+        visits: bed.visits.map((visit) => {
+          const idPhieuKham = String(visit.idPhieuKham ?? "");
+          const meds = medsByVisit[idPhieuKham] ?? [];
+          const splits = medSplitsByVisit[idPhieuKham] ?? {};
+          const computedShifts =
+            idPhieuKham && (meds.length > 0 || Object.keys(splits).length > 0)
+              ? buildAdvancedShiftStats(meds, splits)
+              : visit.marSummary?.shifts;
 
           return {
-            id: String(benhAn.IdBenhAn),
-            patientName: benhAn.HoTenBenhNhan,
-            patientCode: benhAn.MaBenhNhan,
-            patientGender: benhAn.GioiTinh,
-            patientAge: benhAn.Tuoi,
-            room: String(phong.Ma),
-            bed: String(bedCode),
-            idPhieuKham,
-            marSummary: { shifts },
+            ...visit,
+            marSummary: {
+              shifts: computedShifts ?? visit.marSummary?.shifts ?? buildAdvancedShiftStats([], {}),
+            },
           };
-        });
-
-        return {
-          code: bedCode,
-          visits,
-          isOccupied: visits.length > 0,
-        };
-      }),
+        }),
+      })),
     }));
-  }, [allSplitsByVisit, lanKhamByBenhAn, medsByVisit, shiftsByVisit, wardData]);
+  }, [medicationListData]);
 
   const totalByShift = useMemo(() => {
     const result: Record<string, number> = {};
@@ -217,10 +110,8 @@ export const MedicationList: React.FC = () => {
     wardLayout.forEach((room) => {
       room.beds.forEach((bed) => {
         bed.visits.forEach((visit) => {
-          const shifts = visit.marSummary?.shifts || {};
-          Object.keys(shifts).forEach((shiftId) => {
-            const total = shifts[shiftId]?.total ?? 0;
-            result[shiftId] = (result[shiftId] || 0) + total;
+          Object.entries(visit.marSummary?.shifts ?? {}).forEach(([shiftId, stats]) => {
+            result[shiftId] = (result[shiftId] || 0) + Number(stats?.total ?? 0);
           });
         });
       });
@@ -252,8 +143,8 @@ export const MedicationList: React.FC = () => {
   }, [searchTerm, wardLayout]);
 
   const isClosed = false;
-  const isLoading = isLoadingWard || (phieuKhamIds.length > 0 && isLoadingMeds);
-  const error = wardError || medsError;
+  const upstreamErrors = medicationListData?.meta?.upstreamErrors ?? [];
+  const hasPartialData = Boolean(medicationListData?.meta?.partial);
 
   if (isLoading) {
     return (
@@ -277,6 +168,20 @@ export const MedicationList: React.FC = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 pb-24 px-3 md:px-6 max-w-[1300px] mx-auto">
+      {hasPartialData && (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 shadow-sm">
+          <div className="flex items-start gap-3">
+            <i className="fa-solid fa-triangle-exclamation mt-0.5 text-sm"></i>
+            <div>
+              <p className="text-sm font-black">Du lieu dang hien thi co the chua day du.</p>
+              <p className="text-xs font-semibold opacity-80">
+                Backend da bo qua {upstreamErrors.length} loi upstream de giu man hinh tiep tuc hoat dong.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-4 md:p-6 rounded-[28px] md:rounded-[36px] border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-6">
         <div className="flex items-center gap-4 md:gap-5">
           <div className="w-12 h-12 md:w-16 md:h-16 bg-primary text-white rounded-[20px] md:rounded-[24px] flex items-center justify-center text-xl md:text-3xl shadow-xl shadow-primary/20 transform -rotate-2">
