@@ -82,22 +82,35 @@ export const PatientList: React.FC = () => {
     const s = searchTerm.trim().toLowerCase();
     if (!s) return wardLayout;
 
-    return wardLayout.map((room) => ({
-      ...room,
-      beds: room.beds.map((bed) => {
-        const matchingPatients = bed.patients.filter(
-          (p) =>
-            (p.name ?? "").toLowerCase().includes(s) ||
-            String(p.code ?? "").toLowerCase().includes(s)
-        );
+    return wardLayout
+      .map((room) => {
+        const beds = room.beds
+          .map((bed) => {
+            const matchingPatients = bed.patients.filter(
+              (p) =>
+                (p.name ?? "").toLowerCase().includes(s) ||
+                String(p.code ?? "").toLowerCase().includes(s) ||
+                String(p.bed ?? "").toLowerCase().includes(s) ||
+                String(p.room ?? "").toLowerCase().includes(s)
+            );
+
+            return {
+              ...bed,
+              patients: matchingPatients,
+              isOccupied: matchingPatients.length > 0,
+            };
+          })
+          .filter((bed) => (bed.patients?.length ?? 0) > 0);
 
         return {
-          ...bed,
-          patients: matchingPatients,
-          isOccupied: matchingPatients.length > 0,
+          ...room,
+          beds,
+          matchCount: beds.reduce((sum, bed) => sum + (bed.patients?.length ?? 0), 0),
         };
-      }),
-    }));
+      })
+      .filter((room) => room.matchCount > 0)
+      .sort((a, b) => b.matchCount - a.matchCount || a.room.localeCompare(b.room))
+      .map(({ matchCount, ...room }) => room);
   }, [wardLayout, searchTerm]);
 
   const statsSummary = useMemo(() => {

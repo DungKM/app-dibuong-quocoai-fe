@@ -124,22 +124,35 @@ export const MedicationList: React.FC = () => {
     const normalized = searchTerm.trim().toLowerCase();
     if (!normalized) return wardLayout;
 
-    return wardLayout.map((room) => ({
-      ...room,
-      beds: room.beds.map((bed) => {
-        const matchingVisits = bed.visits.filter(
-          (visit) =>
-            (visit.patientName ?? "").toLowerCase().includes(normalized) ||
-            String(visit.patientCode ?? "").toLowerCase().includes(normalized)
-        );
+    return wardLayout
+      .map((room) => {
+        const beds = room.beds
+          .map((bed) => {
+            const matchingVisits = bed.visits.filter(
+              (visit) =>
+                (visit.patientName ?? "").toLowerCase().includes(normalized) ||
+                String(visit.patientCode ?? "").toLowerCase().includes(normalized) ||
+                String(visit.room ?? "").toLowerCase().includes(normalized) ||
+                String(visit.bed ?? "").toLowerCase().includes(normalized)
+            );
+
+            return {
+              ...bed,
+              visits: matchingVisits,
+              isOccupied: matchingVisits.length > 0,
+            };
+          })
+          .filter((bed) => (bed.visits?.length ?? 0) > 0);
 
         return {
-          ...bed,
-          visits: matchingVisits,
-          isOccupied: matchingVisits.length > 0,
+          ...room,
+          beds,
+          matchCount: beds.reduce((sum, bed) => sum + (bed.visits?.length ?? 0), 0),
         };
-      }),
-    }));
+      })
+      .filter((room) => room.matchCount > 0)
+      .sort((a, b) => b.matchCount - a.matchCount || String(a.room).localeCompare(String(b.room)))
+      .map(({ matchCount, ...room }) => room);
   }, [searchTerm, wardLayout]);
 
   const isClosed = false;
@@ -290,32 +303,38 @@ export const MedicationList: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-        {filteredWard.map((room) => (
-          <section key={room.room} className="space-y-4">
-            <div className="flex items-center gap-3 md:gap-4 px-2 md:px-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-[14px] md:rounded-[18px] flex items-center justify-center font-black text-lg md:text-xl shadow-lg border-2 border-white transform rotate-3">
-                {String(room.room).replace(/\D/g, "") || "--"}
+        {filteredWard.length === 0 && searchTerm.trim() ? (
+          <div className="lg:col-span-2 rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm font-black uppercase tracking-widest text-slate-400">
+            Khong tim thay benh nhan phu hop
+          </div>
+        ) : (
+          filteredWard.map((room) => (
+            <section key={room.room} className="space-y-4">
+              <div className="flex items-center gap-3 md:gap-4 px-2 md:px-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-[14px] md:rounded-[18px] flex items-center justify-center font-black text-lg md:text-xl shadow-lg border-2 border-white transform rotate-3">
+                  {String(room.room).replace(/\D/g, "") || "--"}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-black text-base md:text-xl text-slate-800 uppercase tracking-tight">Phong {room.room}</h3>
+                </div>
+                <div className="h-px flex-1 bg-slate-100"></div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-black text-base md:text-xl text-slate-800 uppercase tracking-tight">Phong {room.room}</h3>
-              </div>
-              <div className="h-px flex-1 bg-slate-100"></div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-              {room.beds.map((bed, idx) => (
-                <MedicationBedCard
-                  key={`${room.room}-${bed.code}-${idx}`}
-                  bedCode={bed.code}
-                  visits={bed.visits}
-                  activeShift={activeShift}
-                  isClosed={isClosed}
-                  highlightSearch={!!searchTerm && bed.visits.length > 0}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                {room.beds.map((bed, idx) => (
+                  <MedicationBedCard
+                    key={`${room.room}-${bed.code}-${idx}`}
+                    bedCode={bed.code}
+                    visits={bed.visits}
+                    activeShift={activeShift}
+                    isClosed={isClosed}
+                    highlightSearch={!!searchTerm && bed.visits.length > 0}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        )}
       </div>
     </div>
   );
