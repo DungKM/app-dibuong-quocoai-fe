@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
+import { formatFractionValue } from "@/utils/fractions";
 import {
   getMedicationConfirmationHistory,
   type MedicationConfirmationHistoryItem,
@@ -110,7 +111,7 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
       const row = rowMap.get(rowKey)!;
       const quantityLabel =
         item.soLuongDung != null && !Number.isNaN(Number(item.soLuongDung))
-          ? `${item.soLuongDung}${item.donVi ? ` ${item.donVi}` : ""}`
+          ? `${formatFractionValue(Number(item.soLuongDung))}${item.donVi ? ` ${item.donVi}` : ""}`
           : null;
       const timeLabel = formatTime(item.confirmedAt);
       const cell = row.cells[columnKey] ?? { quantities: [], times: [] };

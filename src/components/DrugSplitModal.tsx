@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { CachDungJson } from "@/types/dibuong";
+import { formatFractionValue, parseFractionValue } from "@/utils/fractions";
 import { SHIFT_OPTIONS } from "@/utils/shifts";
 
 const SHIFT_STYLES: Record<string, { shell: string; icon: string; text: string; accent: string }> = {
@@ -49,16 +50,11 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
   };
 
   const formatSplitValue = (value: number) => {
-    if (!Number.isFinite(value)) return "0";
-    return Number.isInteger(value) ? String(value) : String(value);
+    return formatFractionValue(value);
   };
 
   const parseSplitValue = (raw: string) => {
-    const normalized = raw.replace(/\s+/g, "").replace(",", ".");
-    if (!normalized) return 0;
-
-    const value = Number(normalized);
-    return Number.isFinite(value) && value >= 0 ? value : null;
+    return parseFractionValue(raw);
   };
 
   const formatUsageDisplay = (raw?: string | null) => {
@@ -142,6 +138,9 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
   const completionRatio =
     safeDrug.maxQty > 0 ? Math.min(100, Math.max(0, (totalSplits / safeDrug.maxQty) * 100)) : 0;
   const usageDisplay = formatUsageDisplay(safeDrug.lieuDung);
+  const displayTotalQty = formatSplitValue(safeDrug.maxQty);
+  const displayAssignedQty = formatSplitValue(totalSplits);
+  const displayRemainingQty = formatSplitValue(remainingQty);
   const drugMeta = [
     safeDrug.hamLuong
       ? {
@@ -206,7 +205,7 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
               <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 ring-1 ring-slate-200">
                   <i className="fa-solid fa-layer-group text-[10px] text-slate-400"></i>
-                  Tổng đơn: {safeDrug.maxQty} {safeDrug.donVi || ""}
+                  Tổng đơn: {displayTotalQty} {safeDrug.donVi || ""}
                 </span>
                 <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 ring-1 ring-slate-200">
                   <i className="fa-solid fa-notes-medical text-[10px] text-slate-400"></i>
@@ -230,16 +229,16 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 md:gap-4">
                 <div className="rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 md:px-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Tổng đơn</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">{safeDrug.maxQty}</div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{displayTotalQty}</div>
                 </div>
                 <div className="rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 md:px-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Đã chia</div>
-                  <div className="mt-1 text-xl font-black text-primary">{totalSplits}</div>
+                  <div className="mt-1 text-xl font-black text-primary">{displayAssignedQty}</div>
                 </div>
                 <div className="rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 md:px-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Còn lại</div>
                   <div className={`mt-1 text-xl font-black ${remainingQty === 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                    {remainingQty}
+                    {displayRemainingQty}
                   </div>
                 </div>
               </div>
@@ -291,7 +290,7 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
                     </div>
                     <input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="text"
                       value={draftSplits[option.id]}
                       onChange={(e) => updateSplit(option.id, e.target.value)}
                       className={`w-full bg-transparent px-2 text-center font-black text-[30px] leading-none outline-none md:text-3xl ${style.text}`}
@@ -302,14 +301,14 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
                         onClick={() => nudgeSplit(option.id, -0.5)}
                         className="min-h-11 rounded-2xl bg-slate-100 px-3 py-2.5 text-[11px] font-black uppercase tracking-wide text-slate-600 transition hover:bg-slate-200"
                       >
-                        - 0.5
+                        - 1/2
                       </button>
                       <button
                         type="button"
                         onClick={() => nudgeSplit(option.id, 0.5)}
                         className="min-h-11 rounded-2xl bg-slate-900 px-3 py-2.5 text-[11px] font-black uppercase tracking-wide text-white transition hover:bg-black"
                       >
-                        + 0.5
+                        + 1/2
                       </button>
                     </div>
                   </div>
