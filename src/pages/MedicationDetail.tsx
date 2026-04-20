@@ -21,6 +21,10 @@ import {
   saveMedSplitOne,
 } from "@/services/medSplit.api";
 import { ShiftType, SplitQty } from "@/types/dibuong";
+import {
+  buildDeterministicSplitsFromInstruction,
+  buildSmartMedicationInstruction,
+} from "@/utils/medicationAutoSplit";
 import { getCurrentShift, SHIFT_OPTIONS } from "@/utils/shifts";
 
 type TabType = "PENDING" | "COMPLETED";
@@ -48,6 +52,37 @@ const sumSplits = (splits?: Partial<SplitQty>) =>
   Number(splits?.NOON ?? 0) +
   Number(splits?.AFTERNOON ?? 0) +
   Number(splits?.NIGHT ?? 0);
+
+const isWholeNumber = (value?: number | null) => Math.abs(Number(value ?? 0) - Math.round(Number(value ?? 0))) < 0.000001;
+
+const hasFractionalSplits = (splits?: Partial<SplitQty> | null) =>
+  [splits?.MORNING, splits?.NOON, splits?.AFTERNOON, splits?.NIGHT].some((value) => {
+    const safeValue = Number(value ?? 0);
+    return Math.abs(safeValue - Math.round(safeValue)) >= 0.000001;
+  });
+
+const INDIVISIBLE_UNIT_REGEX =
+  /\b(cái|cai|bộ|bo|ống|ong|chai|lọ|lo|tuýp|tuyp|bơm|bom|dây|day|kim|set|kit)\b/i;
+
+const shouldForceWholeSplit = (item: {
+  SoLuong?: number | null;
+  DonVi?: string | null;
+  LoaiThuoc?: string | null;
+}) => {
+  const maxQty = Number(item.SoLuong ?? 0);
+  if (!(maxQty > 0) || !isWholeNumber(maxQty)) return false;
+
+  const donVi = item.DonVi?.trim() ?? "";
+  const loaiThuoc = item.LoaiThuoc?.trim().toLowerCase() ?? "";
+
+  return maxQty === 1 || loaiThuoc.includes("vật tư") || loaiThuoc.includes("vat tu") || INDIVISIBLE_UNIT_REGEX.test(donVi);
+};
+
+const areSplitsEqual = (left?: Partial<SplitQty> | null, right?: Partial<SplitQty> | null) =>
+  Math.abs(Number(left?.MORNING ?? 0) - Number(right?.MORNING ?? 0)) < 0.000001 &&
+  Math.abs(Number(left?.NOON ?? 0) - Number(right?.NOON ?? 0)) < 0.000001 &&
+  Math.abs(Number(left?.AFTERNOON ?? 0) - Number(right?.AFTERNOON ?? 0)) < 0.000001 &&
+  Math.abs(Number(left?.NIGHT ?? 0) - Number(right?.NIGHT ?? 0)) < 0.000001;
 
 const shuffleShifts = () => {
   const items = [...SHIFT_ORDER];
@@ -267,7 +302,11 @@ export const MedicationDetail: React.FC = () => {
       const items = (donThuocData ?? []).map((item) => ({
         idPhieuThuoc: String(item.IdPhieuThuoc),
         tenThuoc: item.Ten || "",
-        lieuDung: item.LieuDung?.trim() || item.GhiChuLieuDung?.trim() || "",
+        lieuDung:
+          buildSmartMedicationInstruction(item.LieuDung, item.GhiChuLieuDung, Number(item.SoLuong || 0)) ||
+          item.LieuDung?.trim() ||
+          item.GhiChuLieuDung?.trim() ||
+          "",
         maxQty: Number(item.SoLuong || 0),
       }));
 
@@ -280,16 +319,74 @@ export const MedicationDetail: React.FC = () => {
         staleTime: 0,
       });
 
+      let deterministicOverrideCount = 0;
+      for (const item of donThuocData ?? []) {
+        const idPhieuThuoc = String(item.IdPhieuThuoc);
+        const maxQty = Number(item.SoLuong || 0);
+        const forceWholeSplit = shouldForceWholeSplit(item);
+        const localDeterministicSplits = buildDeterministicSplitsFromInstruction(
+          item.LieuDung,
+          item.GhiChuLieuDung,
+          maxQty
+        );
+        const overrideSplits =
+          forceWholeSplit && hasFractionalSplits(localDeterministicSplits)
+            ? buildRandomFallbackSplits(maxQty)
+            : localDeterministicSplits;
+
+        if (!overrideSplits && !forceWholeSplit) continue;
+
+        const info = refreshed?.splits?.[idPhieuThuoc];
+        const isManual = info?.splitSource === "MANUAL";
+        if (isManual) continue;
+
+        const totalAssigned = sumSplits(info?.splits);
+        const shouldOverride =
+          !info ||
+          info.needsReview ||
+          totalAssigned <= 0 ||
+          totalAssigned - maxQty > 0.000001 ||
+          (forceWholeSplit && hasFractionalSplits(info?.splits)) ||
+          (!!overrideSplits && !areSplitsEqual(info.splits, overrideSplits));
+
+        if (!shouldOverride) continue;
+
+        const finalOverrideSplits = overrideSplits ?? buildRandomFallbackSplits(maxQty);
+        await saveMedSplitOne(selectedEncounterId!, idPhieuThuoc, finalOverrideSplits);
+        deterministicOverrideCount += 1;
+      }
+
+      const afterDeterministic =
+        deterministicOverrideCount > 0
+          ? await qc.fetchQuery({
+              queryKey: ["med-splits", selectedEncounterId],
+              queryFn: () => getMedSplitsByEncounter(selectedEncounterId!),
+              staleTime: 0,
+            })
+          : refreshed;
+
       const fallbackCandidates = (donThuocData ?? []).filter((item) => {
         const idPhieuThuoc = String(item.IdPhieuThuoc);
-        const info = refreshed?.splits?.[idPhieuThuoc];
         const maxQty = Number(item.SoLuong || 0);
+        const info = afterDeterministic?.splits?.[idPhieuThuoc];
+        const forceWholeSplit = shouldForceWholeSplit(item);
+        const hasDeterministicSplits = !!buildDeterministicSplitsFromInstruction(
+          item.LieuDung,
+          item.GhiChuLieuDung,
+          maxQty
+        );
         const totalAssigned = sumSplits(info?.splits);
         const isManual = info?.splitSource === "MANUAL";
 
-        if (isManual || !(maxQty > 0)) return false;
+        if (isManual || hasDeterministicSplits || !(maxQty > 0)) return false;
 
-        return !info || info.needsReview || totalAssigned <= 0 || totalAssigned - maxQty > 0.000001;
+        return (
+          !info ||
+          info.needsReview ||
+          totalAssigned <= 0 ||
+          totalAssigned - maxQty > 0.000001 ||
+          (forceWholeSplit && hasFractionalSplits(info?.splits))
+        );
       });
 
       let fallbackCount = 0;
@@ -302,13 +399,13 @@ export const MedicationDetail: React.FC = () => {
       }
 
       const finalData =
-        fallbackCount > 0
+        deterministicOverrideCount > 0 || fallbackCount > 0
           ? await qc.fetchQuery({
               queryKey: ["med-splits", selectedEncounterId],
               queryFn: () => getMedSplitsByEncounter(selectedEncounterId!),
               staleTime: 0,
             })
-          : refreshed;
+          : afterDeterministic;
 
       setActiveTab("COMPLETED");
       const firstShiftWithData = findFirstShiftWithData(finalData?.splits);

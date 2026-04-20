@@ -1,5 +1,5 @@
 import type { CachDungJson } from "@/types/dibuong";
-import { ShiftType } from "@/types/dibuong";
+import { ShiftType, type SplitQty } from "@/types/dibuong";
 import { getShiftByTime, SHIFT_LABELS } from "@/utils/shifts";
 
 type TimeMention = {
@@ -9,8 +9,13 @@ type TimeMention = {
   shift: ShiftType;
 };
 
-const COMPACT_TIME_REGEX = /\b([01]?\d|2[0-3])\s*(?:h|g|:)\s*([0-5]\d)\b/gi;
-const WORD_TIME_REGEX = /\b([01]?\d|2[0-3])\s*(?:giờ|gio)\s*([0-5]\d)\b/gi;
+const COMPACT_TIME_REGEX =
+  /\b([01]?\d|2[0-3])\s*(?:h|g|:)\s*([0-5]\d)(?:\s*(?:p|ph|phut|phút))?\b/gi;
+const WORD_TIME_REGEX =
+  /\b([01]?\d|2[0-3])\s*(?:gio|giờ)\s*([0-5]\d)(?:\s*(?:p|ph|phut|phút))?\b/gi;
+const HOUR_ONLY_REGEX = /\b([01]?\d|2[0-3])\s*(?:h|g|gio|giờ)(?!\s*\d)\b/gi;
+const TIME_RANGE_REGEX =
+  /\b([01]?\d|2[0-3])\s*(?:h|g|:|gio|giờ)\s*([0-5]\d)?(?:\s*(?:p|ph|phut|phút))?\s*(?:-|–|—|~|đến|den|to)\s*([01]?\d|2[0-3])\s*(?:h|g|:|gio|giờ)\s*([0-5]\d)?(?:\s*(?:p|ph|phut|phút))?\b/gi;
 
 const formatTime = (hour: number, minute: number) =>
   `${String(hour).padStart(2, "0")}h${String(minute).padStart(2, "0")}`;
@@ -42,12 +47,33 @@ const pushMatches = (source: string, regex: RegExp, out: TimeMention[]) => {
   }
 };
 
+const pushHourOnlyMatches = (source: string, regex: RegExp, out: TimeMention[]) => {
+  regex.lastIndex = 0;
+
+  for (const match of source.matchAll(regex)) {
+    const [, hourRaw] = match;
+    const index = match.index ?? 0;
+    if (shouldSkipMatch(source, index)) continue;
+
+    const hour = Number(hourRaw);
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) continue;
+
+    out.push({
+      normalized: formatTime(hour, 0),
+      hour,
+      minute: 0,
+      shift: getShiftByTime(hour, 0),
+    });
+  }
+};
+
 export const extractExplicitTimes = (instruction?: string | null): TimeMention[] => {
   if (!instruction?.trim()) return [];
 
   const matches: TimeMention[] = [];
   pushMatches(instruction, COMPACT_TIME_REGEX, matches);
   pushMatches(instruction, WORD_TIME_REGEX, matches);
+  pushHourOnlyMatches(instruction, HOUR_ONLY_REGEX, matches);
 
   const unique = new Map<string, TimeMention>();
   for (const item of matches) {
@@ -60,6 +86,64 @@ export const extractExplicitTimes = (instruction?: string | null): TimeMention[]
   return Array.from(unique.values()).sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute));
 };
 
+const extractSameShiftRangeMentions = (instruction?: string | null): ShiftType[] => {
+  if (!instruction?.trim()) return [];
+
+  const shifts: ShiftType[] = [];
+  TIME_RANGE_REGEX.lastIndex = 0;
+
+  for (const match of instruction.matchAll(TIME_RANGE_REGEX)) {
+    const [, startHourRaw, startMinuteRaw, endHourRaw, endMinuteRaw] = match;
+    const index = match.index ?? 0;
+    if (shouldSkipMatch(instruction, index)) continue;
+
+    const startHour = Number(startHourRaw);
+    const endHour = Number(endHourRaw);
+    const startMinute = startMinuteRaw ? Number(startMinuteRaw) : 0;
+    const endMinute = endMinuteRaw ? Number(endMinuteRaw) : 0;
+
+    if (
+      !Number.isInteger(startHour) ||
+      !Number.isInteger(endHour) ||
+      !Number.isInteger(startMinute) ||
+      !Number.isInteger(endMinute)
+    ) {
+      continue;
+    }
+
+    if (
+      startHour < 0 ||
+      startHour > 23 ||
+      endHour < 0 ||
+      endHour > 23 ||
+      startMinute < 0 ||
+      startMinute > 59 ||
+      endMinute < 0 ||
+      endMinute > 59
+    ) {
+      continue;
+    }
+
+    const startShift = getShiftByTime(startHour, startMinute);
+    const endShift = getShiftByTime(endHour, endMinute);
+
+    if (startShift === endShift) {
+      shifts.push(startShift);
+    }
+  }
+
+  return shifts;
+};
+
+const createEmptySplits = (): SplitQty => ({
+  MORNING: 0,
+  NOON: 0,
+  AFTERNOON: 0,
+  NIGHT: 0,
+});
+
+const roundSplitValue = (value: number) => Math.round(value * 100) / 100;
+
 const parseGhiChuLieuDung = (ghiChuLieuDung?: string | null): CachDungJson[] => {
   if (!ghiChuLieuDung) return [];
 
@@ -69,6 +153,62 @@ const parseGhiChuLieuDung = (ghiChuLieuDung?: string | null): CachDungJson[] => 
   } catch {
     return [];
   }
+};
+
+const extractStructuredShifts = (ghiChuLieuDung?: string | null): ShiftType[] => {
+  const first = parseGhiChuLieuDung(ghiChuLieuDung)[0];
+  if (!first) return [];
+
+  const shifts: ShiftType[] = [];
+  if (first.ThoiGianSang?.trim()) shifts.push(ShiftType.MORNING);
+  if (first.ThoiGianTrua?.trim()) shifts.push(ShiftType.NOON);
+  if (first.ThoiGianChieu?.trim()) shifts.push(ShiftType.AFTERNOON);
+  if (first.ThoiGianToi?.trim()) shifts.push(ShiftType.NIGHT);
+
+  return shifts;
+};
+
+export const buildDeterministicSplitsFromInstruction = (
+  lieuDung?: string | null,
+  ghiChuLieuDung?: string | null,
+  maxQty?: number | null
+): SplitQty | null => {
+  const safeMaxQty = Number(maxQty ?? 0);
+  if (!(safeMaxQty > 0)) return null;
+
+  const normalizedInstruction = lieuDung?.trim() ?? "";
+  const sameShiftRangeMentions = extractSameShiftRangeMentions(normalizedInstruction);
+  const explicitTimes = extractExplicitTimes(normalizedInstruction);
+  const shiftMentions = sameShiftRangeMentions.length
+    ? sameShiftRangeMentions
+    : explicitTimes.length
+      ? explicitTimes.map((item) => item.shift)
+      : extractStructuredShifts(ghiChuLieuDung);
+
+  if (!shiftMentions.length) return null;
+
+  const counts = createEmptySplits();
+  for (const shift of shiftMentions) {
+    counts[shift] += 1;
+  }
+
+  const unitQty = safeMaxQty / shiftMentions.length;
+  const splits = createEmptySplits();
+  (Object.keys(counts) as Array<keyof SplitQty>).forEach((key) => {
+    if (counts[key] > 0) {
+      splits[key] = roundSplitValue(counts[key] * unitQty);
+    }
+  });
+
+  const totalAssigned = splits.MORNING + splits.NOON + splits.AFTERNOON + splits.NIGHT;
+  const diff = roundSplitValue(safeMaxQty - totalAssigned);
+
+  if (Math.abs(diff) > 0.000001) {
+    const lastShift = shiftMentions[shiftMentions.length - 1];
+    splits[lastShift] = roundSplitValue(Math.max(0, splits[lastShift] + diff));
+  }
+
+  return splits;
 };
 
 const buildStructuredTimeHints = (ghiChuLieuDung?: string | null) => {
