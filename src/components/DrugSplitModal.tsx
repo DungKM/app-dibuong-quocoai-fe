@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { CachDungJson } from "@/types/dibuong";
 import { SHIFT_OPTIONS } from "@/utils/shifts";
 
 const SHIFT_STYLES: Record<string, { shell: string; icon: string; text: string; accent: string }> = {
@@ -60,6 +61,30 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
     return Number.isFinite(value) && value >= 0 ? value : null;
   };
 
+  const formatUsageDisplay = (raw?: string | null) => {
+    const normalized = raw?.trim() ?? "";
+    if (!normalized) return "Theo chỉ dẫn của bác sĩ";
+
+    try {
+      const parsed = JSON.parse(normalized);
+      if (!Array.isArray(parsed) || parsed.length === 0) return normalized;
+
+      const first = parsed[0] as CachDungJson;
+      const parts: string[] = [];
+
+      if (first.CachDung?.trim()) parts.push(first.CachDung.trim());
+      if (first.ThoiGianSang?.trim()) parts.push(`Sáng ${first.ThoiGianSang.trim()}`);
+      if (first.ThoiGianTrua?.trim()) parts.push(`Trưa ${first.ThoiGianTrua.trim()}`);
+      if (first.ThoiGianChieu?.trim()) parts.push(`Chiều ${first.ThoiGianChieu.trim()}`);
+      if (first.ThoiGianToi?.trim()) parts.push(`Tối ${first.ThoiGianToi.trim()}`);
+      if (first.SoNgayKe != null) parts.push(`${first.SoNgayKe} ngày`);
+
+      return parts.length > 0 ? parts.join(" • ") : normalized;
+    } catch {
+      return normalized;
+    }
+  };
+
   const [draftSplits, setDraftSplits] = useState<Record<string, string>>(() => ({
     MORNING: formatSplitValue(Number(safeDrug.splits.MORNING ?? 0)),
     NOON: formatSplitValue(Number(safeDrug.splits.NOON ?? 0)),
@@ -116,6 +141,7 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
   );
   const completionRatio =
     safeDrug.maxQty > 0 ? Math.min(100, Math.max(0, (totalSplits / safeDrug.maxQty) * 100)) : 0;
+  const usageDisplay = formatUsageDisplay(safeDrug.lieuDung);
   const drugMeta = [
     safeDrug.hamLuong
       ? {
@@ -184,7 +210,7 @@ export const DrugSplitModal = ({ selectedDrug, setSelectedDrug, saveSplitMutatio
                 </span>
                 <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 ring-1 ring-slate-200">
                   <i className="fa-solid fa-notes-medical text-[10px] text-slate-400"></i>
-                  <span className="break-words">{safeDrug.lieuDung || "Theo chỉ dẫn của bác sĩ"}</span>
+                  <span className="break-words">{usageDisplay}</span>
                 </span>
               </div>
             </div>
