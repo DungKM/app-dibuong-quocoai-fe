@@ -51,6 +51,7 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
   const [date, setDate] = useState(formatDateInput());
   const [draftDate, setDraftDate] = useState(formatDateInput());
   const [activeColumnKey, setActiveColumnKey] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data, isLoading, error } = useQuery<MedicationConfirmationHistoryResponse>({
     queryKey: ["medication-confirmation-history", date, user?.idKhoa],
@@ -137,9 +138,20 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
     };
   }, [items]);
 
+  const filteredRows = useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase();
+    if (!normalized) return rows;
+
+    return rows.filter(
+      (row) =>
+        (row.tenBenhNhan ?? "").toLowerCase().includes(normalized) ||
+        String(row.maBenhNhan ?? "").toLowerCase().includes(normalized)
+    );
+  }, [rows, searchTerm]);
+
   const totalConfirmations = useMemo(
     () =>
-      rows.reduce((sum, row) => {
+      filteredRows.reduce((sum, row) => {
         return (
           sum +
           Object.values(row.cells).reduce((cellSum, cell) => {
@@ -147,7 +159,7 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
           }, 0)
         );
       }, 0),
-    [rows]
+    [filteredRows]
   );
 
   useEffect(() => {
@@ -168,14 +180,14 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
               Chỉ Hiển Thị Lịch Sử
             </div>
             <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-slate-900 md:text-3xl">
-              Bảng Lịch Sử Xác Nhận Dùng Thuốc
+              Lịch Sử Xác Nhận Dùng Thuốc
             </h1>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-600">
               <span className="rounded-full bg-sky-50 px-3 py-1.5 text-sky-700">
                 Khoa: {user?.tenKhoa || "Khoa"}
               </span>
               <span className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600">
-                Bệnh nhân: {rows.length}
+                Bệnh nhân: {filteredRows.length}
               </span>
               <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-700">
                 Lượt xác nhận: {totalConfirmations}
@@ -187,6 +199,16 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative sm:w-[280px]">
+              <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm tên hoặc mã bệnh nhân"
+                className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-primary"
+              />
+            </div>
             <input
               type="date"
               value={draftDate}
@@ -232,9 +254,11 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
           <div className="px-6 py-16 text-center text-sm font-bold text-slate-400">
             Đang tải lịch sử xác nhận...
           </div>
-        ) : rows.length === 0 || columns.length === 0 ? (
+        ) : filteredRows.length === 0 || columns.length === 0 ? (
           <div className="px-6 py-16 text-center text-sm font-bold text-slate-400">
-            Chưa có dữ liệu xác nhận dùng thuốc cho ngày này.
+            {searchTerm.trim()
+              ? "Không tìm thấy bệnh nhân phù hợp."
+              : "Chưa có dữ liệu xác nhận dùng thuốc cho ngày này."}
           </div>
         ) : (
           <>
@@ -296,7 +320,7 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
                   </thead>
 
                   <tbody>
-                    {rows.map((row) => (
+                    {filteredRows.map((row) => (
                       <tr key={`mobile-row-${row.key}`} className="odd:bg-white even:bg-slate-50/50">
                         <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-3 py-4">
                           <div className="text-sm font-black leading-tight text-slate-900">{row.tenBenhNhan}</div>
@@ -400,7 +424,7 @@ export const MedicationConfirmationHistoryPage: React.FC = () => {
                 </thead>
 
                 <tbody>
-                  {rows.map((row) => (
+                  {filteredRows.map((row) => (
                     <tr key={row.key} className="odd:bg-white even:bg-slate-50/50">
                       <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-inherit px-4 py-5">
                         <div className="text-base font-black text-slate-900">{row.tenBenhNhan}</div>
