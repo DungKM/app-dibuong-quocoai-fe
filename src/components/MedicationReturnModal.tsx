@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { MARItem } from "@/types";
+import { formatFractionValue, parseFractionValue } from "@/utils/fractions";
 
 type Props = {
   item: MARItem;
@@ -19,11 +20,17 @@ export const MedicationReturnModal: React.FC<Props> = ({
   isLoading,
 }) => {
   const [qty, setQty] = useState<number>(Math.min(1, Math.max(0, maxQty)));
+  const [qtyDraft, setQtyDraft] = useState<string>(() => formatFractionValue(Math.min(1, Math.max(0, maxQty))));
   const [reason, setReason] = useState<string>("THUA_LIEU");
   const [note, setNote] = useState<string>("");
 
   const safeMax = useMemo(() => Math.max(0, maxQty), [maxQty]);
   const disabled = safeMax <= 0 || qty <= 0 || qty > safeMax;
+  const displaySafeMax = formatFractionValue(safeMax);
+
+  useEffect(() => {
+    setQtyDraft(formatFractionValue(qty));
+  }, [qty]);
 
   return (
     <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -44,7 +51,7 @@ export const MedicationReturnModal: React.FC<Props> = ({
         <div className="p-6 space-y-4">
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
             <div className="text-xs font-bold text-slate-500">Số lượng đang có</div>
-            <div className="text-2xl font-black text-slate-900 mt-1">{safeMax}</div>
+            <div className="text-2xl font-black text-slate-900 mt-1">{displaySafeMax}</div>
             <div className="text-[11px] text-slate-400 mt-1">
               Bạn chỉ có thể trả tối đa bằng số lượng đang có.
             </div>
@@ -56,20 +63,27 @@ export const MedicationReturnModal: React.FC<Props> = ({
                 Số lượng trả
               </label>
               <input
-                type="number"
-                min={0}
-                max={safeMax}
-                value={Number.isFinite(qty) ? qty : 0}
+                type="text"
+                inputMode="text"
+                value={qtyDraft}
                 onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (!Number.isFinite(v)) return;
-                  // clamp
-                  setQty(Math.max(0, Math.min(safeMax, v)));
+                  const raw = e.target.value;
+                  setQtyDraft(raw);
+
+                  if (!raw.trim()) {
+                    setQty(0);
+                    return;
+                  }
+
+                  const parsed = parseFractionValue(raw);
+                  if (parsed == null) return;
+                  setQty(Math.max(0, Math.min(safeMax, parsed)));
                 }}
+                onBlur={() => setQtyDraft(formatFractionValue(qty))}
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-black text-slate-900 outline-none focus:ring-4 focus:ring-primary/10"
               />
               <div className="mt-1 text-[10px] text-slate-400">
-                Max: <span className="font-bold">{safeMax}</span>
+                Max: <span className="font-bold">{displaySafeMax}</span>
               </div>
             </div>
 

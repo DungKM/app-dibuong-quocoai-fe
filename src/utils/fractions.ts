@@ -1,5 +1,5 @@
 const FRACTION_TOLERANCE = 0.000001;
-const SUPPORTED_DENOMINATORS = [2, 3, 4, 5, 6, 8, 10, 12];
+const SUPPORTED_DENOMINATORS = [2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 24, 30, 40, 48, 50, 60, 80, 100];
 
 const gcd = (a: number, b: number): number => {
   let x = Math.abs(a);
@@ -39,8 +39,9 @@ export const formatFractionValue = (value: number) => {
     }
   }
 
-  if (!best || best.error > 0.02) {
-    return `${sign}${absolute}`;
+  if (!best || best.error > 0.005) {
+    const rounded = Math.round(absolute * 1000) / 1000;
+    return `${sign}${rounded}`;
   }
 
   const divisor = gcd(best.numerator, best.denominator);

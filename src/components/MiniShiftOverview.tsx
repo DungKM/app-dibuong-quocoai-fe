@@ -1,5 +1,6 @@
 
 import React from "react";
+import { formatFractionValue } from "@/utils/fractions";
 export const MiniShiftOverview: React.FC<{
     label: string;
     used: number;
@@ -18,14 +19,14 @@ export const MiniShiftOverview: React.FC<{
                 className={`text-[9px] font-black ${isActive ? "text-white" : used > 0 ? "text-primary" : "text-slate-300"
                     }`}
             >
-                {used}
+                {formatFractionValue(used)}
             </span>
             <span className="text-[6px] opacity-10">/</span>
             <span
                 className={`text-[9px] font-black ${isActive ? "text-white" : pending > 0 ? "text-amber-500" : "text-slate-300"
                     }`}
             >
-                {pending}
+                {formatFractionValue(pending)}
             </span>
         </div>
     </div>
