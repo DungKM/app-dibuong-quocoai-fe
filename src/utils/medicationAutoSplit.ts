@@ -9,13 +9,23 @@ type TimeMention = {
   shift: ShiftType;
 };
 
-const COMPACT_TIME_REGEX =
-  /\b([01]?\d|2[0-3])\s*(?:h|g|:)\s*([0-5]\d)(?:\s*(?:p|ph|phut|phút))?\b/gi;
-const WORD_TIME_REGEX =
-  /\b([01]?\d|2[0-3])\s*(?:gio|giờ)\s*([0-5]\d)(?:\s*(?:p|ph|phut|phút))?\b/gi;
-const HOUR_ONLY_REGEX = /\b([01]?\d|2[0-3])\s*(?:h|g|gio|giờ)(?!\s*\d)\b/gi;
-const TIME_RANGE_REGEX =
-  /\b([01]?\d|2[0-3])\s*(?:h|g|:|gio|giờ)\s*([0-5]\d)?(?:\s*(?:p|ph|phut|phút))?\s*(?:-|–|—|~|đến|den|to)\s*([01]?\d|2[0-3])\s*(?:h|g|:|gio|giờ)\s*([0-5]\d)?(?:\s*(?:p|ph|phut|phút))?\b/gi;
+const HOUR_PATTERN = "([01]?\\d|2[0-4])";
+const COMPACT_TIME_REGEX = new RegExp(
+  String.raw`\b${HOUR_PATTERN}\s*(?:h|g|:)\s*([0-5]\d)(?:\s*(?:p|ph|phut|phút))?\b`,
+  "gi"
+);
+const WORD_TIME_REGEX = new RegExp(
+  String.raw`\b${HOUR_PATTERN}\s*(?:gio|giờ)\s*([0-5]\d)(?:\s*(?:p|ph|phut|phút))?\b`,
+  "gi"
+);
+const HOUR_ONLY_REGEX = new RegExp(
+  String.raw`\b${HOUR_PATTERN}\s*(?:h|g|gio|giờ)(?!\s*\d)\b`,
+  "gi"
+);
+const TIME_RANGE_REGEX = new RegExp(
+  String.raw`\b${HOUR_PATTERN}\s*(?:h|g|:|gio|giờ)\s*([0-5]\d)?(?:\s*(?:p|ph|phut|phút))?\s*(?:-|–|—|~|đến|den|to)\s*${HOUR_PATTERN}\s*(?:h|g|:|gio|giờ)\s*([0-5]\d)?(?:\s*(?:p|ph|phut|phút))?\b`,
+  "gi"
+);
 
 const formatTime = (hour: number, minute: number) =>
   `${String(hour).padStart(2, "0")}h${String(minute).padStart(2, "0")}`;
@@ -23,6 +33,19 @@ const formatTime = (hour: number, minute: number) =>
 const shouldSkipMatch = (source: string, index: number) => {
   const prefix = source.slice(Math.max(0, index - 8), index).toLowerCase();
   return /\b(mỗi|moi|cách|cach)\s*$/.test(prefix);
+};
+
+const isValidTime = (hour: number, minute: number) => {
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return false;
+  if (minute < 0 || minute > 59) return false;
+  if (hour < 0 || hour > 24) return false;
+  if (hour === 24 && minute !== 0) return false;
+  return true;
+};
+
+const normalizeTime = (hour: number, minute: number) => {
+  if (hour === 24) return { hour: 24, minute: 0 };
+  return { hour, minute };
 };
 
 const pushMatches = (source: string, regex: RegExp, out: TimeMention[]) => {
@@ -33,16 +56,14 @@ const pushMatches = (source: string, regex: RegExp, out: TimeMention[]) => {
     const index = match.index ?? 0;
     if (shouldSkipMatch(source, index)) continue;
 
-    const hour = Number(hourRaw);
-    const minute = Number(minuteRaw);
-    if (!Number.isInteger(hour) || !Number.isInteger(minute)) continue;
-    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) continue;
+    const time = normalizeTime(Number(hourRaw), Number(minuteRaw));
+    if (!isValidTime(time.hour, time.minute)) continue;
 
     out.push({
-      normalized: formatTime(hour, minute),
-      hour,
-      minute,
-      shift: getShiftByTime(hour, minute),
+      normalized: formatTime(time.hour, time.minute),
+      hour: time.hour,
+      minute: time.minute,
+      shift: getShiftByTime(time.hour, time.minute),
     });
   }
 };
@@ -55,14 +76,14 @@ const pushHourOnlyMatches = (source: string, regex: RegExp, out: TimeMention[]) 
     const index = match.index ?? 0;
     if (shouldSkipMatch(source, index)) continue;
 
-    const hour = Number(hourRaw);
-    if (!Number.isInteger(hour) || hour < 0 || hour > 23) continue;
+    const time = normalizeTime(Number(hourRaw), 0);
+    if (!isValidTime(time.hour, time.minute)) continue;
 
     out.push({
-      normalized: formatTime(hour, 0),
-      hour,
-      minute: 0,
-      shift: getShiftByTime(hour, 0),
+      normalized: formatTime(time.hour, time.minute),
+      hour: time.hour,
+      minute: time.minute,
+      shift: getShiftByTime(time.hour, time.minute),
     });
   }
 };
@@ -97,35 +118,15 @@ const extractSameShiftRangeMentions = (instruction?: string | null): ShiftType[]
     const index = match.index ?? 0;
     if (shouldSkipMatch(instruction, index)) continue;
 
-    const startHour = Number(startHourRaw);
-    const endHour = Number(endHourRaw);
-    const startMinute = startMinuteRaw ? Number(startMinuteRaw) : 0;
-    const endMinute = endMinuteRaw ? Number(endMinuteRaw) : 0;
+    const start = normalizeTime(Number(startHourRaw), startMinuteRaw ? Number(startMinuteRaw) : 0);
+    const end = normalizeTime(Number(endHourRaw), endMinuteRaw ? Number(endMinuteRaw) : 0);
 
-    if (
-      !Number.isInteger(startHour) ||
-      !Number.isInteger(endHour) ||
-      !Number.isInteger(startMinute) ||
-      !Number.isInteger(endMinute)
-    ) {
+    if (!isValidTime(start.hour, start.minute) || !isValidTime(end.hour, end.minute)) {
       continue;
     }
 
-    if (
-      startHour < 0 ||
-      startHour > 23 ||
-      endHour < 0 ||
-      endHour > 23 ||
-      startMinute < 0 ||
-      startMinute > 59 ||
-      endMinute < 0 ||
-      endMinute > 59
-    ) {
-      continue;
-    }
-
-    const startShift = getShiftByTime(startHour, startMinute);
-    const endShift = getShiftByTime(endHour, endMinute);
+    const startShift = getShiftByTime(start.hour, start.minute);
+    const endShift = getShiftByTime(end.hour, end.minute);
 
     if (startShift === endShift) {
       shifts.push(startShift);
@@ -288,7 +289,7 @@ export const buildSmartMedicationInstruction = (
     segments.push(`Dữ liệu kê thuốc cấu trúc: ${structuredHints.join("; ")}.`);
   }
 
-  segments.push("Quy ước ca: Sáng 00:00-11:29, Trưa 11:30-12:59, Chiều 13:00-16:59, Đêm 17:00-23:59.");
+  segments.push("Quy ước ca: Sáng 00:01-11:30, Trưa 11:31-14:00, Chiều 14:01-18:30, Đêm 18:31-24:00.");
   segments.push("Không bắt buộc phải chia đủ 4 ca. Chỉ chia vào những ca thực sự có thông tin thời điểm hoặc tần suất phù hợp.");
   segments.push("Nếu không có đủ thông tin giờ dùng cụ thể thì AI tự suy luận số ca hợp lý từ liều dùng, không được tự ép thành 4 ca.");
   segments.push("Nếu tổng số lượng nhỏ hơn số lần dùng hoặc số mốc giờ nhận diện được, được phép chia số thập phân.");

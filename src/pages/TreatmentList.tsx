@@ -60,18 +60,35 @@ export const TreatmentList: React.FC = () => {
     const s = searchTerm.trim().toLowerCase();
     if (!s) return wardLayout;
 
-    return wardLayout.map((room) => ({
-      ...room,
-      beds: room.beds.map((bed) => {
-        if (!bed.patient) return bed;
+    return wardLayout
+      .map((room) => {
+        const beds = room.beds
+          .map((bed) => {
+            const matchingPatients = (bed.patients ?? []).filter(
+              (patient) =>
+                (patient.name ?? "").toLowerCase().includes(s) ||
+                String(patient.code ?? "").toLowerCase().includes(s) ||
+                String(patient.bed ?? "").toLowerCase().includes(s) ||
+                String(patient.room ?? "").toLowerCase().includes(s)
+            );
 
-        const matches =
-          (bed.patient.name ?? "").toLowerCase().includes(s) ||
-          String(bed.patient.code ?? "").toLowerCase().includes(s);
+            return {
+              ...bed,
+              patients: matchingPatients,
+              isOccupied: matchingPatients.length > 0,
+            };
+          })
+          .filter((bed) => (bed.patients?.length ?? 0) > 0);
 
-        return matches ? bed : { ...bed, patient: undefined };
-      }),
-    }));
+        return {
+          ...room,
+          beds,
+          matchCount: beds.reduce((sum, bed) => sum + (bed.patients?.length ?? 0), 0),
+        };
+      })
+      .filter((room) => room.matchCount > 0)
+      .sort((a, b) => b.matchCount - a.matchCount || a.room.localeCompare(b.room))
+      .map(({ matchCount, ...room }) => room);
   }, [wardLayout, searchTerm]);
 
   if (isLoading) {

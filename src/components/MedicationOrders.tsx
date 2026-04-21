@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getDonThuocByPhieuKham } from "@/services/dibuong.api";
+import { formatFractionValue } from "@/utils/fractions";
 import { ShiftType } from "@/types/dibuong";
 import type { DonThuocItem, SplitQty } from "@/types/dibuong";
 
@@ -98,6 +99,10 @@ export const MedicationOrders: React.FC<Props> = ({
           totalReturned,
           isShiftConfirmed,
           isVisible: filterTab === "PENDING" ? true : hasBeenSplit && qtyInShift > 0,
+          displayQtyInShift: formatFractionValue(qtyInShift),
+          displayTotalAssigned: formatFractionValue(totalAssigned),
+          displayAvailableQty: formatFractionValue(availableQty),
+          displayTotalReturned: formatFractionValue(totalReturned),
         };
       })
       .filter((item) => item.isVisible);
@@ -119,7 +124,7 @@ export const MedicationOrders: React.FC<Props> = ({
         </div>
       )}
 
-      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, totalAssigned, needsReview, reviewReason, splitSource, availableQty, totalReturned, hasBeenSplit, currentStatus, isShiftConfirmed }) => {
+      {list.map(({ raw: it, idPhieuThuoc, qtyInShift, totalAssigned, needsReview, reviewReason, splitSource, availableQty, totalReturned, hasBeenSplit, currentStatus, isShiftConfirmed, displayQtyInShift, displayTotalAssigned, displayAvailableQty, displayTotalReturned }) => {
         const canAction = availableQty > 0 && !isShiftConfirmed;
         const metaChips = [
           it.HamLuong
@@ -239,10 +244,10 @@ export const MedicationOrders: React.FC<Props> = ({
                 <div className="mt-4 border-t border-slate-50 pt-4">
                   <div className="mb-4 flex flex-wrap gap-2">
                     <span className="rounded-xl border border-slate-200/50 bg-slate-100 px-3 py-1 text-[10px] font-black uppercase text-slate-600">
-                      Ca này: {qtyInShift}
+                      Ca này: {displayQtyInShift}
                     </span>
                     <span className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-1 text-[10px] font-black uppercase text-sky-700">
-                      Tổng đã chia: {totalAssigned}
+                      Tổng đã chia: {displayTotalAssigned}
                     </span>
                     {splitSource && (
                       <span className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-1 text-[10px] font-black uppercase text-violet-700">
@@ -256,11 +261,11 @@ export const MedicationOrders: React.FC<Props> = ({
                     )}
                     {totalReturned > 0 && (
                       <span className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-1 text-[10px] font-black uppercase text-rose-600">
-                        Đã trả: {totalReturned}
+                        Đã trả: {displayTotalReturned}
                       </span>
                     )}
                     <span className="rounded-xl bg-primary px-3 py-1 text-[10px] font-black uppercase text-white shadow-sm">
-                      Còn lại: {availableQty} {it.DonVi}
+                      Còn lại: {displayAvailableQty} {it.DonVi}
                     </span>
                   </div>
 
@@ -306,7 +311,7 @@ export const MedicationOrders: React.FC<Props> = ({
                           className="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-100 active:scale-95"
                         >
                           <i className="fa-solid fa-check-circle"></i>
-                          Dùng {availableQty} {it.DonVi}
+                          Dùng {displayAvailableQty} {it.DonVi}
                         </button>
                         <button
                           onClick={() =>
