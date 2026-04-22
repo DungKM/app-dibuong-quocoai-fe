@@ -2,6 +2,7 @@ import React from "react";
 import { MedVisitLite, ShiftType } from "@/types/dibuong";
 import { MiniShiftOverview } from "./MiniShiftOverview";
 import { useNavigate } from "react-router-dom";
+import { formatFractionValue } from "@/utils/fractions";
 
 export const MedicationBedCard: React.FC<{
     bedCode: string;
@@ -75,19 +76,19 @@ export const MedicationBedCard: React.FC<{
                                         <div className="text-center">
                                             <div className="text-[6px] font-black text-slate-400">DÙNG</div>
                                             <div className={`text-[11px] font-black ${current.used > 0 ? "text-primary" : "text-slate-500"}`}>
-                                                {current.used}
+                                                {formatFractionValue(current.used)}
                                             </div>
                                         </div>
                                         <div className="text-center">
                                             <div className="text-[6px] font-black text-slate-400">CHỜ</div>
                                             <div className={`text-[11px] font-black ${current.pending > 0 ? "text-amber-500 animate-pulse" : "text-slate-500"}`}>
-                                                {current.pending}
+                                                {formatFractionValue(current.pending)}
                                             </div>
                                         </div>
                                         <div className="text-center">
                                             <div className="text-[6px] font-black text-slate-400">TRẢ</div>
                                             <div className={`text-[11px] font-black ${current.returned > 0 ? "text-purple-600" : "text-slate-500"}`}>
-                                                {current.returned}
+                                                {formatFractionValue(current.returned)}
                                             </div>
                                         </div>
                                     </div>

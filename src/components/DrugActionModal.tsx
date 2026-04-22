@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+
+import { formatFractionValue, parseFractionValue } from "@/utils/fractions";
 
 export const DrugActionModal = ({
   actionDrug,
@@ -18,6 +20,13 @@ export const DrugActionModal = ({
   const isConfirm = actionDrug.type === "CONFIRM";
   const isUnconfirm = actionDrug.type === "UNCONFIRM";
   const isReturn = actionDrug.type === "RETURN";
+  const maxReturnQty = Number(actionDrug.qty ?? 0);
+  const displayShiftQty = formatFractionValue(maxReturnQty);
+  const [returnQtyDraft, setReturnQtyDraft] = useState(() => formatFractionValue(Number(returnQty ?? 0)));
+
+  useEffect(() => {
+    setReturnQtyDraft(formatFractionValue(Number(returnQty ?? 0)));
+  }, [actionDrug?.idPhieuThuoc, returnQty]);
 
   const palette = isConfirm
     ? "bg-emerald-50 text-emerald-500 shadow-emerald-100"
@@ -46,41 +55,54 @@ export const DrugActionModal = ({
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setActionDrug(null)} />
 
-      <div className="relative bg-white w-full max-sm:max-w-xs max-w-sm rounded-[44px] p-8 shadow-2xl animate-in zoom-in duration-200">
-        <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-4xl mb-6 shadow-lg ${palette}`}>
+      <div className="relative w-full max-w-sm rounded-[44px] bg-white p-8 shadow-2xl animate-in zoom-in duration-200 max-sm:max-w-xs">
+        <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl shadow-lg ${palette}`}>
           <i className={`fa-solid ${icon}`}></i>
         </div>
 
-        <h3 className="text-xl font-black text-slate-900 text-center mb-2 uppercase tracking-tighter">{title}</h3>
+        <h3 className="mb-2 text-center text-xl font-black uppercase tracking-tighter text-slate-900">{title}</h3>
 
-        <div className="bg-slate-50 rounded-2xl p-4 mb-6">
-          <div className="text-sm font-bold text-slate-900 text-center uppercase leading-tight">{actionDrug.ten}</div>
-          <div className="text-[10px] font-black text-primary mt-1 uppercase text-center tracking-widest">
-            Số lượng trong ca: {actionDrug.qty}
+        <div className="mb-6 rounded-2xl bg-slate-50 p-4">
+          <div className="text-center text-sm font-bold uppercase leading-tight text-slate-900">{actionDrug.ten}</div>
+          <div className="mt-1 text-center text-[10px] font-black uppercase tracking-widest text-primary">
+            Số lượng trong ca: {displayShiftQty}
           </div>
         </div>
 
         {isReturn && (
-          <div className="space-y-4 mb-6">
+          <div className="mb-6 space-y-4">
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Số lượng thực trả</label>
+              <label className="ml-2 text-[10px] font-black uppercase text-slate-400">Số lượng thực trả</label>
               <input
-                type="number"
-                max={actionDrug.qty}
-                min={1}
-                value={returnQty}
-                onChange={(e) => setReturnQty(Number(e.target.value))}
-                className="w-full bg-slate-100 border-none rounded-2xl px-4 py-3 font-black text-lg focus:ring-2 focus:ring-red-500 outline-none"
+                type="text"
+                inputMode="text"
+                value={returnQtyDraft}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setReturnQtyDraft(raw);
+
+                  if (!raw.trim()) {
+                    setReturnQty(0);
+                    return;
+                  }
+
+                  const parsed = parseFractionValue(raw);
+                  if (parsed == null) return;
+                  setReturnQty(Math.max(0, Math.min(maxReturnQty, parsed)));
+                }}
+                onBlur={() => setReturnQtyDraft(formatFractionValue(Number(returnQty ?? 0)))}
+                className="w-full rounded-2xl border-none bg-slate-100 px-4 py-3 text-lg font-black outline-none focus:ring-2 focus:ring-red-500"
               />
+              <div className="mt-1 text-[10px] font-bold text-slate-400">Tối đa: {displayShiftQty}</div>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Lý do trả lại</label>
+                <label className="ml-2 text-[10px] font-black uppercase text-slate-400">Lý do trả lại</label>
                 <select
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
-                  className="w-full bg-slate-100 border-none rounded-2xl px-4 py-3 font-bold text-sm focus:ring-2 focus:ring-red-500 transition-all outline-none"
+                  className="w-full rounded-2xl border-none bg-slate-100 px-4 py-3 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">-- Chọn lý do --</option>
                   <option value="Benh nhan tu choi">Bệnh nhân từ chối</option>
@@ -95,7 +117,7 @@ export const DrugActionModal = ({
                   <textarea
                     placeholder="Nhập lý do cụ thể..."
                     rows={2}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-red-400"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:border-red-400 focus:outline-none"
                     onChange={(e) => {
                       (window as any)._otherReason = e.target.value;
                     }}
@@ -132,13 +154,13 @@ export const DrugActionModal = ({
               onReturn();
             }}
             disabled={isReturn && (!returnReason || returnQty <= 0)}
-            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-lg transition-all active:scale-95 disabled:opacity-40 ${primaryClass}`}
+            className={`w-full rounded-2xl py-4 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all active:scale-95 disabled:opacity-40 ${primaryClass}`}
           >
             {primaryLabel}
           </button>
           <button
             onClick={() => setActionDrug(null)}
-            className="font-black text-[10px] text-slate-400 uppercase py-2 hover:text-slate-600 transition"
+            className="py-2 text-[10px] font-black uppercase text-slate-400 transition hover:text-slate-600"
           >
             Hủy bỏ
           </button>

@@ -13,6 +13,18 @@ import type { MedicationListResponse } from "@/services/medSplit.api";
 import { ShiftType } from "@/types/dibuong";
 import { getCurrentShift, SHIFT_OPTIONS } from "@/utils/shifts";
 
+type MedicationStatusFilter = "ALL" | "USED" | "PENDING";
+
+const STATUS_FILTER_OPTIONS: Array<{
+  id: MedicationStatusFilter;
+  label: string;
+  icon: string;
+}> = [
+  { id: "ALL", label: "Tất cả", icon: "fa-bars-staggered" },
+  { id: "USED", label: "Đã dùng", icon: "fa-check-circle" },
+  { id: "PENDING", label: "Chờ dùng", icon: "fa-hourglass-half" },
+];
+
 export const MedicationList: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -21,6 +33,7 @@ export const MedicationList: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeShift, setActiveShift] = useState<ShiftType>(() => getCurrentShift());
+  const [statusFilter, setStatusFilter] = useState<MedicationStatusFilter>("ALL");
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [idKhoa, setIdKhoa] = useState<string>(khoaOptions[0].id);
 
@@ -122,7 +135,7 @@ export const MedicationList: React.FC = () => {
 
   const filteredWard = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
-    if (!normalized) return wardLayout;
+    if (!normalized && statusFilter === "ALL") return wardLayout;
 
     return wardLayout
       .map((room) => {
@@ -130,10 +143,18 @@ export const MedicationList: React.FC = () => {
           .map((bed) => {
             const matchingVisits = bed.visits.filter(
               (visit) =>
-                (visit.patientName ?? "").toLowerCase().includes(normalized) ||
-                String(visit.patientCode ?? "").toLowerCase().includes(normalized) ||
-                String(visit.room ?? "").toLowerCase().includes(normalized) ||
-                String(visit.bed ?? "").toLowerCase().includes(normalized)
+                ((visit.patientName ?? "").toLowerCase().includes(normalized) ||
+                  String(visit.patientCode ?? "").toLowerCase().includes(normalized) ||
+                  String(visit.room ?? "").toLowerCase().includes(normalized) ||
+                  String(visit.bed ?? "").toLowerCase().includes(normalized) ||
+                  !normalized) &&
+                (() => {
+                  const current = visit.marSummary?.shifts?.[activeShift];
+
+                  if (statusFilter === "USED") return Number(current?.used ?? 0) > 0;
+                  if (statusFilter === "PENDING") return Number(current?.pending ?? 0) > 0;
+                  return true;
+                })()
             );
 
             return {
@@ -153,7 +174,7 @@ export const MedicationList: React.FC = () => {
       .filter((room) => room.matchCount > 0)
       .sort((a, b) => b.matchCount - a.matchCount || String(a.room).localeCompare(String(b.room)))
       .map(({ matchCount, ...room }) => room);
-  }, [searchTerm, wardLayout]);
+  }, [activeShift, searchTerm, statusFilter, wardLayout]);
 
   const isClosed = false;
   const upstreamErrors = medicationListData?.meta?.upstreamErrors ?? [];
@@ -166,7 +187,7 @@ export const MedicationList: React.FC = () => {
           <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
           <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <p className="text-gray-500 text-sm animate-pulse">Vui long cho giay lat...</p>
+        <p className="text-gray-500 text-sm animate-pulse">Vui lòng chờ trong giây lát...</p>
       </div>
     );
   }
@@ -181,20 +202,6 @@ export const MedicationList: React.FC = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 pb-24 px-3 md:px-6 max-w-[1300px] mx-auto">
-      {hasPartialData && (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 shadow-sm">
-          <div className="flex items-start gap-3">
-            <i className="fa-solid fa-triangle-exclamation mt-0.5 text-sm"></i>
-            <div>
-              <p className="text-sm font-black">Du lieu dang hien thi co the chua day du.</p>
-              <p className="text-xs font-semibold opacity-80">
-                Backend da bo qua {upstreamErrors.length} loi upstream de giu man hinh tiep tuc hoat dong.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="bg-white p-4 md:p-6 rounded-[28px] md:rounded-[36px] border border-slate-100 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 md:gap-6">
         <div className="flex items-center gap-4 md:gap-5">
           <div className="w-12 h-12 md:w-16 md:h-16 bg-primary text-white rounded-[20px] md:rounded-[24px] flex items-center justify-center text-xl md:text-3xl shadow-xl shadow-primary/20 transform -rotate-2">
@@ -302,10 +309,32 @@ export const MedicationList: React.FC = () => {
         </div>
       </div>
 
+      <div className="overflow-x-auto no-scrollbar pb-1">
+        <div className="inline-flex min-w-full gap-2 rounded-2xl bg-slate-100/80 p-1.5 md:min-w-0">
+          {STATUS_FILTER_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setStatusFilter(option.id)}
+              className={`flex min-w-[118px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition ${
+                statusFilter === option.id
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-slate-500 hover:bg-white/70 hover:text-slate-700"
+              }`}
+            >
+              <i className={`fa-solid ${option.icon} text-[11px]`} />
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-        {filteredWard.length === 0 && searchTerm.trim() ? (
+        {filteredWard.length === 0 ? (
           <div className="lg:col-span-2 rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm font-black uppercase tracking-widest text-slate-400">
-            Khong tim thay benh nhan phu hop
+            {searchTerm.trim() || statusFilter !== "ALL"
+              ? "Khong tim thay benh nhan phu hop"
+              : "Chua co benh nhan phu hop trong ca nay"}
           </div>
         ) : (
           filteredWard.map((room) => (
