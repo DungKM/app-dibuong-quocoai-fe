@@ -12,23 +12,70 @@ interface BenhAnInfo {
   huongDieuTri?: string;
 }
 
+function formatField(value?: string | null): string {
+  const trimmed = value?.trim();
+  return trimmed || "chua co";
+}
+
+function buildClinicalContext(
+  patientName: string,
+  notes?: ProgressNote[],
+  benhAnInfo?: BenhAnInfo
+): string {
+  const noteText = notes?.length
+    ? notes
+        .map((note, index) => {
+          const timestamp = formatField(note.timestamp);
+          const author = formatField(note.authorName);
+          const content = formatField(note.content);
+          return `${index + 1}. [${timestamp}] ${author}: ${content}`;
+        })
+        .join("\n")
+    : "chua co";
+
+  return [
+    `BENH NHAN: ${patientName || "chua ro"}`,
+    `- Ly do vao vien: ${formatField(benhAnInfo?.lyDoVaoVien)}`,
+    `- Dien bien benh: ${formatField(benhAnInfo?.dienBienBenh)}`,
+    `- Tien su ban than: ${formatField(benhAnInfo?.tienSuBenh)}`,
+    `- Tien su gia dinh: ${formatField(benhAnInfo?.tienSuBenhGiaDinh)}`,
+    `- Chan doan: ${formatField(benhAnInfo?.chanDoan)}`,
+    `- Huong dieu tri: ${formatField(benhAnInfo?.huongDieuTri)}`,
+    `- Dien bien ghi nhan:\n${noteText}`,
+  ].join("\n");
+}
+
 function buildSystemPrompt(
   patientName: string,
   notes?: ProgressNote[],
   benhAnInfo?: BenhAnInfo
 ): string {
-  return `Bạn là trợ lý AI hỗ trợ lâm sàng cho bác sĩ. Trả lời ngắn gọn, chính xác bằng tiếng Việt.
-Luôn nhắc bác sĩ xác nhận lại trước khi ra quyết định lâm sàng.
+  return [
+    "Ban la tro ly AI ho tro lam sang cho bac si.",
+    "Tra loi ngan gon, chinh xac, bang tieng Viet.",
+    "Ngu canh benh an duoi day da duoc he thong cap quyen cho ban trong phien nay.",
+    "Khong duoc tu choi chung chung vi ly do bao mat neu cau hoi dang hoi ve chinh du lieu benh an da duoc cung cap.",
+    "Neu du lieu chua co thi phai noi ro muc nao chua co, khong suy doan.",
+    "Luon nhac bac si xac nhan lai truoc khi ra quyet dinh lam sang.",
+    "",
+    buildClinicalContext(patientName, notes, benhAnInfo),
+  ].join("\n");
+}
 
-=== BỆNH NHÂN: ${patientName} ===
-- Lý do vào viện: ${benhAnInfo?.lyDoVaoVien || "chưa có"}
-- Diễn biến bệnh: ${benhAnInfo?.dienBienBenh || "chưa có"}
-- Tiền sử bản thân: ${benhAnInfo?.tienSuBenh || "chưa có"}
-- Tiền sử gia đình: ${benhAnInfo?.tienSuBenhGiaDinh || "chưa có"}
-- Chẩn đoán: ${benhAnInfo?.chanDoan || "chưa có"}
-- Hướng điều trị: ${benhAnInfo?.huongDieuTri || "chưa có"}
-${notes?.length ? `\nDiễn biến ghi nhận:\n${JSON.stringify(notes, null, 2)}` : ""}
-`;
+function buildGroundedUserMessage(
+  userMessage: string,
+  patientName: string,
+  notes?: ProgressNote[],
+  benhAnInfo?: BenhAnInfo
+): string {
+  return [
+    "Du lieu benh an noi bo da duoc cap quyen cho cau tra loi nay.",
+    "Hay tra loi dua tren du lieu sau. Neu thieu thi chi ro phan thieu.",
+    "",
+    buildClinicalContext(patientName, notes, benhAnInfo),
+    "",
+    `CAU HOI: ${userMessage}`,
+  ].join("\n");
 }
 
 export const aiService = {
@@ -37,9 +84,10 @@ export const aiService = {
     notes: ProgressNote[] | undefined,
     history: { role: "user" | "model"; text: string }[],
     userMessage: string,
-    benhAnInfo?: BenhAnInfo  // 👈 thêm param
+    benhAnInfo?: BenhAnInfo
   ): Promise<string> {
     const token = authStorage.getAccessToken();
+    const clinicalContext = buildClinicalContext(patientName, notes, benhAnInfo);
 
     const response = await fetch(GEMINI_URL, {
       method: "POST",
@@ -49,11 +97,26 @@ export const aiService = {
       },
       body: JSON.stringify({
         system_instruction: {
-          parts: [{ text: buildSystemPrompt(patientName, notes, benhAnInfo) }], // 👈 truyền vào
+          parts: [{ text: buildSystemPrompt(patientName, notes, benhAnInfo) }],
         },
         contents: [
+          {
+            role: "user",
+            parts: [{ text: clinicalContext }],
+          },
+          {
+            role: "model",
+            parts: [
+              {
+                text: "Da nhan du lieu benh an duoc cap quyen. Toi se tra loi dua tren du lieu nay.",
+              },
+            ],
+          },
           ...history.map((h) => ({ role: h.role, parts: [{ text: h.text }] })),
-          { role: "user", parts: [{ text: userMessage }] },
+          {
+            role: "user",
+            parts: [{ text: buildGroundedUserMessage(userMessage, patientName, notes, benhAnInfo) }],
+          },
         ],
         generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
       }),
@@ -70,6 +133,6 @@ export const aiService = {
     }
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Không có phản hồi.";
+    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Khong co phan hoi.";
   },
 };
