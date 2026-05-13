@@ -20,10 +20,10 @@ const STATUS_FILTER_OPTIONS: Array<{
   label: string;
   icon: string;
 }> = [
-  { id: "ALL", label: "Tất cả", icon: "fa-bars-staggered" },
-  { id: "USED", label: "Đã dùng", icon: "fa-check-circle" },
-  { id: "PENDING", label: "Chờ dùng", icon: "fa-hourglass-half" },
-];
+    { id: "ALL", label: "Tất cả", icon: "fa-bars-staggered" },
+    { id: "USED", label: "Đã dùng", icon: "fa-check-circle" },
+    { id: "PENDING", label: "Chờ dùng", icon: "fa-hourglass-half" },
+  ];
 
 export const MedicationList: React.FC = () => {
   const { user } = useAuth();
@@ -78,16 +78,28 @@ export const MedicationList: React.FC = () => {
   DateTrigger.displayName = "DateTrigger";
 
   const {
-    data: medicationListData,
-    isLoading,
-    error,
+    data: medicationLayoutData,
+    isLoading: isLayoutLoading,
   } = useQuery<MedicationListResponse>({
-    queryKey: ["medicationList", idKhoa, selectedDate],
-    queryFn: () => getMedicationList(idKhoa, selectedDate),
+    queryKey: ["medicationList-layout", idKhoa, selectedDate],
+    queryFn: () => getMedicationList(idKhoa, selectedDate, "layout"),
     enabled: !!idKhoa,
     staleTime: 30_000,
   });
 
+  const {
+    data: medicationFullData,
+    isLoading: isFullLoading,
+    error,
+  } = useQuery<MedicationListResponse>({
+    queryKey: ["medicationList-full", idKhoa, selectedDate],
+    queryFn: () => getMedicationList(idKhoa, selectedDate, "full"),
+    enabled: !!idKhoa,
+    staleTime: 30_000,
+  });
+  const medicationListData = medicationFullData || medicationLayoutData;
+
+  const isPartialLayout = medicationListData?.meta?.stage === "layout";
   const wardLayout = useMemo(() => {
     const rawWardLayout = medicationListData?.wardLayout ?? [];
     const medsByVisit = medicationListData?.medsByVisit ?? {};
@@ -177,10 +189,7 @@ export const MedicationList: React.FC = () => {
   }, [activeShift, searchTerm, statusFilter, wardLayout]);
 
   const isClosed = false;
-  const upstreamErrors = medicationListData?.meta?.upstreamErrors ?? [];
-  const hasPartialData = Boolean(medicationListData?.meta?.partial);
-
-  if (isLoading) {
+  if (isLayoutLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-4">
         <div className="relative w-12 h-12">
@@ -192,7 +201,7 @@ export const MedicationList: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !medicationLayoutData) {
     return (
       <div className="max-w-[1300px] mx-auto p-6 bg-red-50 border border-red-200 text-red-700 font-bold rounded-3xl">
         Loi tai du lieu: {String((error as any)?.message || error)}
@@ -248,7 +257,7 @@ export const MedicationList: React.FC = () => {
           <div className="relative w-full lg:w-[240px]">
             <DatePicker
               selected={selectedDateObj}
-              onChange={(date) => {
+              onChange={(date: any) => {
                 if (!date) return;
                 setSelectedDate(format(date, "yyyy-MM-dd"));
               }}
@@ -275,9 +284,8 @@ export const MedicationList: React.FC = () => {
                 type="button"
                 onClick={() => setActiveShift(option.id)}
                 title={`${option.label} (${option.timeRange})`}
-                className={`flex-1 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center relative ${
-                  activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-500"
-                }`}
+                className={`flex-1 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center relative ${activeShift === option.id ? "bg-white text-primary shadow-sm" : "text-slate-500"
+                  }`}
               >
                 {totalInShift > 0 && (
                   <span className="absolute top-1 right-2 flex h-2 w-2">
@@ -316,11 +324,10 @@ export const MedicationList: React.FC = () => {
               key={option.id}
               type="button"
               onClick={() => setStatusFilter(option.id)}
-              className={`flex min-w-[118px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition ${
-                statusFilter === option.id
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-slate-500 hover:bg-white/70 hover:text-slate-700"
-              }`}
+              className={`flex min-w-[118px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition ${statusFilter === option.id
+                ? "bg-white text-primary shadow-sm"
+                : "text-slate-500 hover:bg-white/70 hover:text-slate-700"
+                }`}
             >
               <i className={`fa-solid ${option.icon} text-[11px]`} />
               <span>{option.label}</span>
@@ -328,7 +335,12 @@ export const MedicationList: React.FC = () => {
           ))}
         </div>
       </div>
-
+      {isPartialLayout && isFullLoading && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          Đang tải dữ liệu thuốc...
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
         {filteredWard.length === 0 ? (
           <div className="lg:col-span-2 rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm font-black uppercase tracking-widest text-slate-400">

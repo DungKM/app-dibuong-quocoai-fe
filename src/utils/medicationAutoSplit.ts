@@ -7,6 +7,7 @@ type TimeMention = {
   hour: number;
   minute: number;
   shift: ShiftType;
+  precision: "hour" | "minute";
 };
 
 const HOUR_PATTERN = "([01]?\\d|2[0-4])";
@@ -64,6 +65,7 @@ const pushMatches = (source: string, regex: RegExp, out: TimeMention[]) => {
       hour: time.hour,
       minute: time.minute,
       shift: getShiftByTime(time.hour, time.minute),
+      precision: "minute",
     });
   }
 };
@@ -84,20 +86,52 @@ const pushHourOnlyMatches = (source: string, regex: RegExp, out: TimeMention[]) 
       hour: time.hour,
       minute: time.minute,
       shift: getShiftByTime(time.hour, time.minute),
+      precision: "hour",
     });
   }
+};
+
+const extractDailyFrequencyCount = (instruction?: string | null) => {
+  const normalized = instruction?.trim().toLowerCase() ?? "";
+  if (!normalized) return null;
+
+  const patterns = [
+    /\bx\s*(\d+)\s*l[ầa]n\s*\/\s*ng[àa]y\b/i,
+    /\b(\d+)\s*l[ầa]n\s*\/\s*ng[àa]y\b/i,
+    /\bm[ỗo]i\s*ng[àa]y\s*(\d+)\s*l[ầa]n\b/i,
+    /\bng[àa]y\s*(\d+)\s*l[ầa]n\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+
+    const value = Number(match[1]);
+    if (Number.isInteger(value) && value > 0) return value;
+  }
+
+  return null;
 };
 
 export const extractExplicitTimes = (instruction?: string | null): TimeMention[] => {
   if (!instruction?.trim()) return [];
 
-  const matches: TimeMention[] = [];
-  pushMatches(instruction, COMPACT_TIME_REGEX, matches);
-  pushMatches(instruction, WORD_TIME_REGEX, matches);
-  pushHourOnlyMatches(instruction, HOUR_ONLY_REGEX, matches);
+  const minuteMatches: TimeMention[] = [];
+  pushMatches(instruction, COMPACT_TIME_REGEX, minuteMatches);
+  pushMatches(instruction, WORD_TIME_REGEX, minuteMatches);
+
+  const hourOnlyMatches: TimeMention[] = [];
+  pushHourOnlyMatches(instruction, HOUR_ONLY_REGEX, hourOnlyMatches);
 
   const unique = new Map<string, TimeMention>();
-  for (const item of matches) {
+  for (const item of [...minuteMatches, ...hourOnlyMatches]) {
+    if (
+      item.precision === "hour" &&
+      minuteMatches.some((minuteItem) => minuteItem.hour === item.hour && minuteItem.shift === item.shift)
+    ) {
+      continue;
+    }
+
     const key = `${item.normalized}-${item.shift}`;
     if (!unique.has(key)) {
       unique.set(key, item);
@@ -178,13 +212,27 @@ export const buildDeterministicSplitsFromInstruction = (
   if (!(safeMaxQty > 0)) return null;
 
   const normalizedInstruction = lieuDung?.trim() ?? "";
+  const statedFrequencyCount = extractDailyFrequencyCount(normalizedInstruction);
   const sameShiftRangeMentions = extractSameShiftRangeMentions(normalizedInstruction);
   const explicitTimes = extractExplicitTimes(normalizedInstruction);
-  const shiftMentions = sameShiftRangeMentions.length
+  const structuredShifts = extractStructuredShifts(ghiChuLieuDung);
+  let shiftMentions = sameShiftRangeMentions.length
     ? sameShiftRangeMentions
     : explicitTimes.length
       ? explicitTimes.map((item) => item.shift)
-      : extractStructuredShifts(ghiChuLieuDung);
+      : structuredShifts;
+
+  if (statedFrequencyCount && shiftMentions.length > statedFrequencyCount) {
+    const uniqueShiftMentions = shiftMentions.filter((shift, index) => shiftMentions.indexOf(shift) === index);
+
+    if (uniqueShiftMentions.length === statedFrequencyCount) {
+      shiftMentions = uniqueShiftMentions;
+    } else if (structuredShifts.length === statedFrequencyCount) {
+      shiftMentions = structuredShifts;
+    } else {
+      shiftMentions = shiftMentions.slice(0, statedFrequencyCount);
+    }
+  }
 
   if (!shiftMentions.length) return null;
 
@@ -269,6 +317,7 @@ export const buildSmartMedicationInstruction = (
 ) => {
   const rawInstruction = lieuDung?.trim() ?? "";
   const explicitTimes = extractExplicitTimes(rawInstruction);
+  const statedFrequencyCount = extractDailyFrequencyCount(rawInstruction);
   const structuredHints = explicitTimes.length > 0 ? [] : buildStructuredTimeHints(ghiChuLieuDung);
   const timeHintText = buildTimeHintText(explicitTimes);
   const safeMaxQty = Number(maxQty ?? 0);
@@ -296,6 +345,10 @@ export const buildSmartMedicationInstruction = (
 
   if (safeMaxQty > 0) {
     segments.push(`Tổng số lượng đã chia ở tất cả các ca không được vượt quá ${safeMaxQty}.`);
+  }
+
+  if (statedFrequencyCount) {
+    segments.push(`Tần suất nhận diện được: ${statedFrequencyCount} lần/ngày.`);
   }
 
   return segments.join(" | ");

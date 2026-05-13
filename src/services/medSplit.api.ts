@@ -152,11 +152,18 @@ export function getMedSplitsByEncounter(idPhieuKham: string) {
   return requestNode<MedSplitsResponse>(`/api/encounters/${idPhieuKham}/med-splits`);
 }
 
-export function getMedicationList(idKhoa?: string | null, date?: string | null) {
+export type MedicationListMode = "layout" | "full";
+
+export function getMedicationList(
+  idKhoa?: string | null,
+  date?: string | null,
+  mode: MedicationListMode = "full"
+) {
   return requestNode<MedicationListResponse>(`/api/medication-list`, {
     query: {
       idKhoa: idKhoa || undefined,
       date: date || undefined,
+      mode,
     },
   });
 }
