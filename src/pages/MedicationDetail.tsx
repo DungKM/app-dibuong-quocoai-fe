@@ -61,21 +61,89 @@ const hasFractionalSplits = (splits?: Partial<SplitQty> | null) =>
     return Math.abs(safeValue - Math.round(safeValue)) >= 0.000001;
   });
 
+const normalizeAscii = (value?: string | null) =>
+  (value ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 const INDIVISIBLE_UNIT_REGEX =
   /\b(cái|cai|bộ|bo|ống|ong|chai|lọ|lo|tuýp|tuyp|bơm|bom|dây|day|kim|set|kit)\b/i;
+
+const CONTAINER_UNIT_REGEX = /\b(ống|ong|chai|lọ|lo)\b/i;
+const STRENGTH_BASED_SPLIT_REGEX = /\d+(?:[.,]\d+)?\s*[a-zA-Zµ]+\s*\/\s*\d+(?:[.,]\d+)?\s*[a-zA-Zµ]+/i;
+
+const shouldSplitByStrength = (item: {
+  DonVi?: string | null;
+  HamLuong?: string | null;
+  LieuDung?: string | null;
+}) => {
+  const donVi = normalizeAscii(item.DonVi);
+  const hamLuong = normalizeAscii(item.HamLuong);
+  const lieuDung = normalizeAscii(item.LieuDung);
+
+  if (!/\b(ong|chai|lo)\b/i.test(donVi)) return false;
+  if (/\d+(?:[.,]\d+)?\s*[a-z\u00b5]+\s*\/\s*\d+(?:[.,]\d+)?\s*[a-z\u00b5]+/i.test(hamLuong)) return true;
+
+  return /(?:^|\s)(?:1\/2|0[.,]5|\d+\/\d+)(?:\s*)(?:lọ|lo|chai|ống|ong)\b/i.test(lieuDung);
+  return /(?:1\/2|0[.,]5|\d+\/\d+)\s*(?:lo|chai|ong)\b/i.test(lieuDung);
+};
 
 const shouldForceWholeSplit = (item: {
   SoLuong?: number | null;
   DonVi?: string | null;
   LoaiThuoc?: string | null;
+  HamLuong?: string | null;
+  LieuDung?: string | null;
 }) => {
   const maxQty = Number(item.SoLuong ?? 0);
   if (!(maxQty > 0) || !isWholeNumber(maxQty)) return false;
 
   const donVi = item.DonVi?.trim() ?? "";
   const loaiThuoc = item.LoaiThuoc?.trim().toLowerCase() ?? "";
+  const loaiThuocNormalized = loaiThuoc.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const splitByStrength = shouldSplitByStrength(item);
+
+  if (splitByStrength && loaiThuocNormalized.includes("vat tu")) return true;
+  if (splitByStrength) return false;
+
+  if (splitByStrength) {
+    return loaiThuoc.includes("váº­t tÆ°") || loaiThuoc.includes("vat tu");
+  }
 
   return maxQty === 1 || loaiThuoc.includes("vật tư") || loaiThuoc.includes("vat tu") || INDIVISIBLE_UNIT_REGEX.test(donVi);
+};
+
+const shouldSplitByStrengthV2 = (item: {
+  DonVi?: string | null;
+  HamLuong?: string | null;
+  LieuDung?: string | null;
+}) => {
+  const donVi = normalizeAscii(item.DonVi);
+  const hamLuong = normalizeAscii(item.HamLuong);
+  const lieuDung = normalizeAscii(item.LieuDung);
+
+  if (!/\b(ong|chai|lo)\b/i.test(donVi)) return false;
+  if (/\d+(?:[.,]\d+)?\s*[a-z\u00b5]+\s*\/\s*\d+(?:[.,]\d+)?\s*[a-z\u00b5]+/i.test(hamLuong)) return true;
+
+  return /(?:1\/2|0[.,]5|\d+\/\d+)\s*(?:lo|chai|ong)\b/i.test(lieuDung);
+};
+
+const shouldForceWholeSplitV2 = (item: {
+  SoLuong?: number | null;
+  DonVi?: string | null;
+  LoaiThuoc?: string | null;
+  HamLuong?: string | null;
+  LieuDung?: string | null;
+}) => {
+  const maxQty = Number(item.SoLuong ?? 0);
+  if (!(maxQty > 0) || !isWholeNumber(maxQty)) return false;
+
+  const donVi = normalizeAscii(item.DonVi);
+  const loaiThuocNormalized = normalizeAscii(item.LoaiThuoc);
+  const splitByStrength = shouldSplitByStrengthV2(item);
+
+  if (splitByStrength && loaiThuocNormalized.includes("vat tu")) return true;
+  if (splitByStrength) return false;
+
+  return maxQty === 1 || loaiThuocNormalized.includes("vat tu") || /\b(cai|bo|tuyp|bom|day|kim|set|kit)\b/i.test(donVi);
 };
 
 const areSplitsEqual = (left?: Partial<SplitQty> | null, right?: Partial<SplitQty> | null) =>
@@ -323,7 +391,7 @@ export const MedicationDetail: React.FC = () => {
       for (const item of donThuocData ?? []) {
         const idPhieuThuoc = String(item.IdPhieuThuoc);
         const maxQty = Number(item.SoLuong || 0);
-        const forceWholeSplit = shouldForceWholeSplit(item);
+        const forceWholeSplit = shouldForceWholeSplitV2(item);
         const localDeterministicSplits = buildDeterministicSplitsFromInstruction(
           item.LieuDung,
           item.GhiChuLieuDung,
@@ -369,7 +437,7 @@ export const MedicationDetail: React.FC = () => {
         const idPhieuThuoc = String(item.IdPhieuThuoc);
         const maxQty = Number(item.SoLuong || 0);
         const info = afterDeterministic?.splits?.[idPhieuThuoc];
-        const forceWholeSplit = shouldForceWholeSplit(item);
+        const forceWholeSplit = shouldForceWholeSplitV2(item);
         const hasDeterministicSplits = !!buildDeterministicSplitsFromInstruction(
           item.LieuDung,
           item.GhiChuLieuDung,
@@ -628,7 +696,24 @@ export const MedicationDetail: React.FC = () => {
         splitLoading={splitLoading}
         filterTab={activeTab}
         onPickDrug={(drug) => {
-          const currentInfo = splitData?.splits?.[drug.idPhieuThuoc]?.splits;
+          const currentEntry = splitData?.splits?.[drug.idPhieuThuoc];
+          const currentInfo = currentEntry?.splits;
+          const suggestedSplits = buildDeterministicSplitsFromInstruction(
+            drug.lieuDung,
+            undefined,
+            Number(drug.maxQty ?? 0)
+          );
+          const preferredSplits =
+            currentEntry?.splitSource !== "MANUAL" &&
+            shouldSplitByStrengthV2({
+              DonVi: drug.donVi,
+              HamLuong: drug.hamLuong,
+              LieuDung: drug.lieuDung,
+            }) &&
+            suggestedSplits
+              ? suggestedSplits
+              : currentInfo;
+
           setSelectedDrug({
             idPhieuThuoc: drug.idPhieuThuoc,
             ten: drug.ten,
@@ -638,10 +723,10 @@ export const MedicationDetail: React.FC = () => {
             hamLuong: drug.hamLuong,
             loaiThuoc: drug.loaiThuoc,
             splits: {
-              MORNING: Number(currentInfo?.MORNING ?? 0),
-              NOON: Number(currentInfo?.NOON ?? 0),
-              AFTERNOON: Number(currentInfo?.AFTERNOON ?? 0),
-              NIGHT: Number(currentInfo?.NIGHT ?? 0),
+              MORNING: Number(preferredSplits?.MORNING ?? 0),
+              NOON: Number(preferredSplits?.NOON ?? 0),
+              AFTERNOON: Number(preferredSplits?.AFTERNOON ?? 0),
+              NIGHT: Number(preferredSplits?.NIGHT ?? 0),
             },
           });
         }}
